@@ -166,7 +166,16 @@ MiniMind 的体量更适合作为「算法教学与实践」载体，但思路�
   - [01 大模型与 LLM 概览](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/01_大模型与LLM概览.md)
 - 02）基石：分词与数据工程
   - [02 分词与数据工程](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/02_分词与数据工程.md)
-- （其余章节暂存草稿）
+- 03）模型核心：Attention 与 Transformer
+  - [03 模型核心：Attention 与 Transformer](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/03_模型核心_Attention与Transformer.md)
+- 04）模型训练：从零到一
+  - [04 模型训练：从零到一](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/04_模型训练从零到一.md)
+- 05）对齐与微调：让模型更“听话”
+  - [05 对齐与微调：RLHF / DPO / RLAIF](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/05_对齐与RLHF_DPO_RLAIF概览.md)
+- 06）走向多模态：Omni-Model 详解
+  - [06 走向多模态：Omni-Model 详解](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/06_走向多模态_Omni_Model.md)
+- 07）推理、部署与评估
+  - [07 推理、部署与评估](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/07_推理部署与评估.md)
 - 附录
   - [附录：术语表与模型剖析](file:///Users/shenhaibo/Desktop/02LLM/Doc/基础知识/附录_术语表与模型剖析.md)
 

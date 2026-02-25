@@ -1,4 +1,4 @@
-# 02 Transformer 与注意力机制
+# 03 模型核心：Attention 与 Transformer
 
 > 本文档由 Vibe Writing 大模型生成初稿，并结合本仓库实践与个人学习需求进行整理与校订。
 
@@ -25,7 +25,7 @@ Transformer 这个词经常出现，但真正画出来，其实就是「多层�
 - Encoder-only（BERT 一类）；
 - Decoder-only（GPT、LLaMA、Qwen、MiniMind 等）。
 
-本仓库里的模型属于 **Decoder-only**，也就是：
+本仓库里的模型属于 Decoder-only，也就是：
 
 - 只保留解码器部分；
 - 使用因果掩码（causal mask），保证当前位置只能看到「自己之前」的 token。
@@ -38,7 +38,7 @@ Transformer 这个词经常出现，但真正画出来，其实就是「多层�
 
 ## 3. 自注意力：模型为什么要「自己看自己」
 
-很多对 Transformer 的困惑来自一个词：**Attention**（注意力）。直觉可以先这样理解：
+很多对 Transformer 的困惑来自一个词：Attention（注意力）。直觉可以先这样理解：
 
 > 对于序列里的每个 token，它可以「回头」看前面所有 token，从中挑出当前预测最需要的信息，并给不同 token 分配不同的权重。
 
@@ -102,9 +102,9 @@ Transformer 这个词经常出现，但真正画出来，其实就是「多层�
 
 - 「今天下雨所以我没去跑步」和「我没去跑步所以今天下雨」含义完全不同。
 
-因此，需要给模型额外输入**位置信息**：
+因此，需要给模型额外输入位置信息：
 
-- 早期 Transformer 使用**绝对位置编码**（sin/cos）；
+- 早期 Transformer 使用绝对位置编码（sin/cos）；
 - 后来出现了各种相对位置编码、旋转位置编码（RoPE）等。
 
 MiniMind 中使用的是 RoPE，可以更好地支持长上下文外推。在代码里，你会看到类似：
@@ -157,7 +157,28 @@ MiniMind 中使用的是 RoPE，可以更好地支持长上下文外推。在代
 - 在注意力权重或 FFN 中加入 Dropout；
 - 帮助模型不过度依赖某些特定特征，提升泛化能力。
 
-MiniMind 中的 TransformerBlock 大概率会包含上述所有组件，你可以试着在 `model/model_minimind.py` 中对照阅读：
+### 6.5 注意力变体与长上下文扩展（前沿速览）
+
+- GQA / MQA：为推理效率优化 KV-Cache
+  - MQA（Multi-Query Attention）：所有查询头共享一组 K/V 头，显著降低 KV-Cache 占用与访存压力，但在部分场景下会有轻微质量退化。
+  - GQA（Grouped-Query Attention）：介于 MHA 与 MQA 之间，若干查询头共享同一组 K/V 头，在接近 MQA 吞吐/显存的同时更稳健。LLaMA、Qwen 等系列已大规模采用（Ainslie 等，EMNLP 2023）。
+- 稀疏/线性/混合注意力：为超长上下文而生
+  - 稀疏注意力：只对关键位置计算注意力，兼顾质量与开销。
+  - 线性注意力：用核技巧或快速权重将复杂度从 O(N²) 降为 O(N)，适合百万级上下文；常与稀疏层组合以兼顾全局与精确召回。
+  - 混合方案示例：社区近期探索如线性+稀疏的混合架构（SALA 路线），结合稳定化与位置编码改造，使端侧长上下文可行。
+- RoPE 长上下文扩展
+  - Position Interpolation（PI）：简单插值扩展频率，易用但大倍率下保真度有限。
+  - NTK-aware/NTK-by-parts：分频段处理以缓解高频损失。
+  - YaRN：在 NTK-by-parts 基础上引入注意力“温度”缩放与动态策略，配合少量数据微调，可将原生上下文扩展至更长窗口（ICLR 2024、Eleuther 资料）。
+
+### 6.6 计算内核与系统优化（简述）
+
+- FlashAttention v2/v3：IO 感知与异步/低精度流水，在 H100 等硬件上进一步提升注意力吞吐，官方报告显示可达 1.5–2.0× 加速（NeurIPS 2024 Spotlight/相关技术报告）。
+- 系统层加速（详见第 07 篇）：
+  - PagedAttention：分页管理 KV-Cache，近零碎片并支持前缀共享，是 vLLM 高吞吐的关键（SOSP 2023）。
+  - 推测式解码（Speculative Decoding）：小模型起草、大模型并行校验，多 token 一跳确认，在低/中 QPS 下显著降延迟，vLLM 支持 EAGLE、草稿模型、MLP、n-gram 等多种路线。
+
+MiniMind 中的 `TransformerBlock` 大概率会包含上述所有组件，你可以试着在 `model/model_minimind.py` 中对照阅读：
 
 - 找到 Attention 模块的实现；
 - 找到 FFN、LayerNorm、Dropout 的组合顺序；
