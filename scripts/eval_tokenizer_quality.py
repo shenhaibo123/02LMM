@@ -10,12 +10,16 @@ def read_corpus_lines(path: Optional[str], max_lines: Optional[int] = None) -> L
         return []
     lines: List[str] = []
     with open(path, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if max_lines is not None and i >= max_lines:
+        # 按「非空行」计数，确保 max_lines 对应的是有效文本行数，而不是包含空行在内的物理行数。
+        count = 0
+        for line in f:
+            if max_lines is not None and count >= max_lines:
                 break
-            line = line.rstrip("\n")
-            if line:
-                lines.append(line)
+            text = line.rstrip("\n")
+            if not text:
+                continue
+            lines.append(text)
+            count += 1
     return lines
 
 

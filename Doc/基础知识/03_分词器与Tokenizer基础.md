@@ -191,9 +191,9 @@
 
 这也是 MiniMind 文档中「模型与目标大小」「质量评估」「与模型对齐」几条建议在实际工程里的具体落地方式。
 
-在本仓库：
-- 分词器资产位于：[tokenizer.json](file:///Users/shenhaibo/Desktop/02LLM/model/tokenizer.json)、[tokenizer_config.json](file:///Users/shenhaibo/Desktop/02LLM/model/tokenizer_config.json)
-- 训练脚本入口参考：[train_tokenizer.py](file:///Users/shenhaibo/Desktop/02LLM/trainer/train_tokenizer.py)
+在本仓库（相对于项目根目录）：
+- 分词器资产位于：`model/tokenizer.json`、`model/tokenizer_config.json`
+- 训练脚本入口参考：`trainer/train_tokenizer.py`
 - 与模型对齐时需同步修改 `vocab_size` 等配置字段（见模型配置类与加载逻辑）。
 
 ## 6. Qwen 与「面壁」Tokenizer 说明
