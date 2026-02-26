@@ -204,8 +204,7 @@ python scripts/serve_openai_api.py --device cuda:0  # 或 --device mps / --devic
       --tasks ceval* cmmlu* aclue* tmmlu* \
       --batch_size 8 --trust_remote_code
     ```
-  - 本项目 K 系列结构参考了 [MiniMind2](https://github.com/jingyaogong/minimind)，但 **目前尚未在 C-Eval / C-MMLU / A-CLUE / TMMLU+ 上跑完整评测**。  
-    如需复现或对比，可使用上面的 `lm_eval` 命令在你自己的权重上实际跑一遍，然后再填表记录结果。
+
 
 ### 部署与长上下文
 
