@@ -241,8 +241,73 @@ lm_eval --model hf --model_args pretrained=./model,device=cuda,dtype=auto --task
 ### 部署与长上下文
 
 - **RoPE 长度外推（YaRN）**：`eval_llm.py --inference_rope_scaling`；Transformers 模型可在 `config.json` 里配置 `rope_scaling`。
-- **模型转换**：`scripts/convert_model.py` 支持 PyTorch ↔ Transformers，并可导出带 `rope_scaling` 的 LlamaConfig。
-- **API 与推理**：`scripts/serve_openai_api.py` 提供 OpenAI 兼容接口；vLLM、llama.cpp、Ollama、MNN 等多种推理/部署方式可按各自文档接入。
+
+#### 模型转换（PyTorch ↔ Transformers）
+
+- `scripts/convert_model.py` 用于在 **PyTorch 原生权重** 与 **Transformers 格式** 之间互相转换，可选导出带 `rope_scaling` 的 `LlamaConfig`。
+- 一般推荐将训练好的权重先转换为 Transformers 格式，再接入评测与下游推理/部署框架。
+
+#### 基于 OpenAI 兼容 API 的服务
+
+- `scripts/serve_openai_api.py` 提供兼容 OpenAI API 的最简聊天接口，方便接入 FastGPT、Open-WebUI、Dify 等三方 UI。
+
+**Transformers 模型目录示例：**
+
+```bash
+<model-root>/
+├── config.json
+├── generation_config.json
+├── pytorch_model.bin 或 model.safetensors
+├── tokenizer.json
+├── tokenizer_config.json
+└── special_tokens_map.json
+```
+
+**启动服务与测试：**
+
+```bash
+# 启动聊天服务端
+python scripts/serve_openai_api.py
+
+# 测试接口
+python scripts/chat_openai_api.py
+```
+
+**API 示例（兼容 OpenAI Chat Completions）：**
+
+```bash
+curl http://<ip>:<port>/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "model-identifier",
+    "messages": [
+      { "role": "user", "content": "世界上最高的山是什么？" }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "stream": true
+  }'
+```
+
+#### 其他部署路径（简要指引）
+
+- **vLLM**：高吞吐推理框架，可直接加载 Transformers 模型，例如：
+
+  ```bash
+  vllm serve ./<model-root> --model-impl transformers --served-model-name "minimind" --port 8998
+  ```
+
+- **llama.cpp**：将 Transformers 模型转换为 GGUF 格式并量化，适合本地命令行与多端推理：
+  1. 参考官方文档安装 llama.cpp，确保与本仓库位于同级目录。
+  2. 使用 `convert_hf_to_gguf.py` 将 Transformers 模型转换为 `.gguf`。
+  3. 可选：使用 `llama-quantize` 做 4bit/8bit 量化。
+  4. 使用 `llama-cli` 进行命令行推理。
+
+- **Ollama**：在有 GGUF 模型的前提下，编写 `modelfile` 并通过 `ollama create` / `ollama run` 启动本地服务，也可直接使用社区发布的模型。
+
+- **MNN**：面向端侧的推理引擎，可在其 `transformers/llm/export` 工具中将 Transformers 模型导出为 MNN/HQQ 量化格式，用于 Mac 或移动端测试。
+
+> 以上三方框架的详细参数和高级用法，请以各自官方文档为准。
 
 ---
 
