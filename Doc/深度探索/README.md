@@ -10,6 +10,7 @@
 - **推理策略实验**：贪心 / top-k / top-p / temperature 等组合对生成质量的影响，结合 `scripts/chat_openai_api.py` 做交互实验。
 - **对齐方法对比**：在相同基座模型上，对比 DPO、PPO、GRPO、SPO 等方法带来的输出风格差异。
 - **与上游 MiniMind / 其他开源模型对比**：在相同 prompt 下对比回答质量，并尝试分析差异来源。
+- **VeOmni 与 Omni 模型**：基于 VeOmni 等成熟多模态训练框架，将本仓库的数据格式与训练阶段迁移到更大规模 LMM/Omni 训练，并记录配置与实战笔记。
 
 写作时可以：
 

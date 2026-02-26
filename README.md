@@ -191,26 +191,58 @@ python scripts/serve_openai_api.py --device cuda:0  # 或 --device mps / --devic
 
 ## 评测与部署
 
-### 评测（看模型能力）
+### 评测说明
 
-- **本仓库自带评测脚本**：  
-  - `scripts/eval_model_benchmark.py --backend hf --model-path <本地 Transformers 模型> --tasks hellaswag arc_easy mmlu --limit 100`  
-  - 或先用 `scripts/serve_openai_api.py` 起一个 OpenAI 兼容服务，再用 `--backend api` 评测在线模型。
-- **中文客观题榜单（C-Eval / C-MMLU / A-CLUE / TMMLU+）**：  
-  - 使用 `lm-evaluation-harness` 直接评测：  
-    ```bash
-    lm_eval --model hf \
-      --model_args pretrained=<模型路径>,device=cuda,dtype=auto \
-      --tasks ceval* cmmlu* aclue* tmmlu* \
-      --batch_size 8 --trust_remote_code
-    ```
+评测基于 **[lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)**（`lm_eval`）。本仓库的 `scripts/eval_model_benchmark.py` 是对其的薄封装：统一入口、默认任务和参数，并支持本地 HF 模型与 OpenAI 兼容 API 两种后端。`--tasks` 传入的即 lm_eval 的任务名，完整列表见 [lm-evaluation-harness 文档](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/docs/task_guide.md)。
 
+**安装：** `pip install lm_eval`（可选，仅评测时需要。）
+
+#### 支持的 `--tasks` 示例
+
+| 类型 | 任务名（可作 `--tasks` 参数） | 说明 |
+|------|-------------------------------|------|
+| **英文 · 常识/推理** | `hellaswag` | 常识推理，4 选 1 |
+| | `arc_easy`, `arc_challenge` | 科学常识（简单/困难） |
+| | `piqa` | 物理直觉，2 选 1 |
+| | `winogrande` | 常识共指消解 |
+| **英文 · 知识/推理** | `mmlu` | 多学科知识（57 子任务） |
+| | `gsm8k` | 小学数学推理 |
+| | `truthfulqa_mc2` | 真实性多选 |
+| **中文 · 客观题** | `ceval*` | C-Eval 中文综合 |
+| | `cmmlu*` | C-MMLU 中文多学科 |
+| | `aclue*` | A-CLUE 中文理解 |
+| | `tmmlu*` | TMMLU+ 中文 |
+
+未指定 `--tasks` 时，脚本使用默认英文任务集：`hellaswag arc_easy arc_challenge piqa winogrande mmlu gsm8k truthfulqa_mc2`。中文任务需显式传入（如 `--tasks ceval* cmmlu*`）。`*` 为 lm_eval 通配符，会展开为对应多子任务。
+
+#### 常用命令
+
+```bash
+# 本地 HF 模型，默认英文任务，限制条数
+python scripts/eval_model_benchmark.py --backend hf --model-path ./model --tasks hellaswag arc_easy mmlu --limit 100
+
+# 冒烟测试（少量任务 + 少量样本）
+python scripts/eval_model_benchmark.py --backend hf --model-path ./model --smoke --device cpu --limit 10
+
+# 中文客观题（同上脚本，传入中文任务）
+python scripts/eval_model_benchmark.py --backend hf --model-path ./model --tasks ceval* cmmlu* aclue* tmmlu* --device cuda:0
+
+# 先起 OpenAI 兼容服务，再评测在线模型
+python scripts/serve_openai_api.py --device cuda:0
+python scripts/eval_model_benchmark.py --backend api --tasks hellaswag gsm8k
+```
+
+也可直接用 lm_eval 命令行（与脚本等价，仅参数写法不同）：
+
+```bash
+lm_eval --model hf --model_args pretrained=./model,device=cuda,dtype=auto --tasks hellaswag arc_easy mmlu --batch_size 8 --trust_remote_code
+```
 
 ### 部署与长上下文
 
 - **RoPE 长度外推（YaRN）**：`eval_llm.py --inference_rope_scaling`；Transformers 模型可在 `config.json` 里配置 `rope_scaling`。
 - **模型转换**：`scripts/convert_model.py` 支持 PyTorch ↔ Transformers，并可导出带 `rope_scaling` 的 LlamaConfig。
-- **API 与推理**：`scripts/serve_openai_api.py` 提供 OpenAI 兼容接口；vLLM、llama.cpp、Ollama、MNN 等更详细用法见 [Doc/评测与部署.md](Doc/评测与部署.md)。
+- **API 与推理**：`scripts/serve_openai_api.py` 提供 OpenAI 兼容接口；vLLM、llama.cpp、Ollama、MNN 等多种推理/部署方式可按各自文档接入。
 
 ---
 
