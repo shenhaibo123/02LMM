@@ -1,13 +1,16 @@
 ---
 name: git-commit-push-workflow
-description: Enforces a thorough git commit and optional push workflow: always inspect git status and diffs, run basic checks, iterate on fixes until the working tree is clean and issues are resolved, then create a well-structured commit, and only push to GitHub when the user explicitly requests it (e.g., says 提交并推送/push).
+description: 每次对话中对仓库做了实质修改（存在未提交改动）时自动触发；用户说「提交」「commit」「推送」等时也触发。执行自检与提交流程，提交完成后默认执行 git push；仅当用户明确说「先别提交」或「只改不推」时不推送。
 ---
 
 # Git Commit & Push Workflow
 
-## Instructions
+## 触发条件
 
-Use this skill whenever the user要求“提交代码”、“生成 commit”、“帮我 commit/push”、“提交到 GitHub”等与提交相关的操作。
+- **自动触发**：本次对话中已对仓库做了实质修改，且 `git status` 显示存在未提交改动时，应执行本流程（检查 → 提交 → 默认推送）。
+- **用户主动触发**：用户要求「提交代码」「生成 commit」「帮我 commit/push」「提交到 GitHub」「推送」等与提交/推送相关的操作时，同样执行本流程。
+
+## Instructions
 
 当该技能生效时，遵循以下严格流程；**不要跳步**，除非用户明确要求只做其中一部分（例如“先帮我看 diff，不要提交”）：
 
@@ -89,26 +92,16 @@ Use this skill whenever the user要求“提交代码”、“生成 commit”�
 - 视情况决定是追加下一次提交，还是在当前会话中额外创建一个补充提交；
 - 不在未经用户同意的情况下自动修改历史（例如禁止随意 `commit --amend`）。
 
-### 7. 是否推送到 GitHub（remote push）
+### 7. 推送到 GitHub（remote push）
 
-遵循以下安全策略，避免意外推送：
+**默认行为：提交完成后直接执行 `git push`。**
 
-1. **仅当用户明确表示需要推送时才 push**，例如用户说：
-   - “提交并推送”
-   - “帮我 push 到 GitHub”
-   - “推到远端/远程仓库”
-2. 如果用户只说“提交”或“帮我生成 commit”：
-   - 默认只在本地创建提交，不自动推送。
-   - 在回复中说明「已在本地提交，如需推送请再说一声」。
-3. 当明确需要推送时：
+1. **默认推送**：在本地提交（第 6 步）完成后，除非用户在本轮对话中明确说过「先别提交」「只改不推」「不要推送」等，否则应执行 `git push origin <branch>`（通常是 `main` 或当前分支）。
+2. **不推送的例外**：仅当用户明确表示本次不要推送时，才跳过 push，并在回复中说明「已本地提交，未推送；需要时请说“推送”」。
+3. 执行推送时：
    - 再次用 `git status` 确认本地分支状态（无未提交改动）。
-   - 执行 `git push origin <branch>`（通常是 `main` 或当前分支）。
-   - 推送成功后，向用户简要报告：
-     - 推送的分支名；
-     - 大致改动范围；
-     - 如有可用的远程链接（例如 GitHub 仓库 URL 或 PR URL），可提示用户在哪里查看。
-
-> 严格避免使用危险操作（如强制推送到主分支等），除非用户明确要求并且给予足够提示。
+   - 执行 `git push` 后向用户简要报告：分支名、改动范围；如有远程链接可一并提示。
+4. **禁止**：严格避免强制推送到主分支等危险操作，除非用户明确要求并已提示风险。
 
 ### 8. 循环与收尾
 
@@ -126,29 +119,20 @@ Use this skill whenever the user要求“提交代码”、“生成 commit”�
 
 ## Examples
 
-### 示例 1：用户要求「帮我提交这次改动」
+### 示例 1：对话中有改动（自动触发）或用户说「提交」
 
-用户：“帮我提交这次改动。”
-
-代理预期行为：
-
-1. 按本技能说明，先运行并查看 `git status` / `git diff` / `git diff --cached` / `git log -5 --oneline`。
-2. 用自然语言向用户简要总结改动内容，并指出是否有可疑文件或潜在问题。
-3. 运行项目已有的测试/检查（如合适）。
-4. 根据 diff 生成合适的提交信息（对齐现有风格）。
-5. `git add` 目标文件，`git commit` 完成本地提交。
-6. 回复用户：说明已经在本地完成提交，简要描述提交内容，并提醒「如需推送到 GitHub，请再说一声」。
-
-### 示例 2：用户要求「提交并推送到 GitHub」
-
-用户：“这部分改动帮我提交并推送到 GitHub。”
+代理在本次对话中改动了仓库文件，或用户说“帮我提交这次改动”。
 
 代理预期行为：
 
-1. 重复示例 1 中的完整本地检查和提交流程。
-2. 在本地提交完成且 `git status` 干净后，执行 `git push origin <当前分支>`。
-3. 回复用户：
-   - 说明已完成本地提交和远程推送；
-   - 概述本次提交的主要内容；
-   - 如有可用的远程仓库/PR 链接，可以提示用户到对应位置查看。
+1. 运行 `git status` / `git diff`（及必要时 `git diff --cached` / `git log -5 --oneline`），总结改动。
+2. 自检、整理提交范围、生成提交信息，执行 `git add` 与 `git commit`。
+3. **默认执行 `git push`**，完成后回复：已提交并推送，简述改动与分支。
+4. 若用户本轮说过「先别提交」或「只改不推」，则只提交不推送，并说明「已本地提交，未推送」。
+
+### 示例 2：用户明确说「先别提交」或「只改不推」
+
+用户：“先别提交” / “只改不推”。
+
+代理预期行为：完成自检与本地 `git commit` 后，**不执行 `git push`**，并在回复中说明「已本地提交，需要推送时说一声」。
 
