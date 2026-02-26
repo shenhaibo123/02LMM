@@ -122,6 +122,8 @@ if __name__ == "__main__":
     parser.add_argument("--probe_interval", type=int, default=500, help="探针指标计算间隔（0=禁用）")
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数")
+    parser.add_argument('--num_key_value_heads', default=2, type=int, help="KV头数（GQA）")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构")
     parser.add_argument("--data_path", type=str, default=str(PROJECT_ROOT / "dataset" / "pretrain_hq.jsonl"), help="预训练数据路径")
@@ -149,7 +151,9 @@ if __name__ == "__main__":
     # ========== 3. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     ckp_dir = str(PROJECT_ROOT / "checkpoints")
-    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))
+    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
+                               num_attention_heads=args.num_attention_heads, num_key_value_heads=args.num_key_value_heads,
+                               use_moe=bool(args.use_moe))
     ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=ckp_dir) if args.from_resume == 1 else None
 
     # ========== 4. 混合精度：CUDA 用 AMP，MPS/CPU 用 nullcontext ==========

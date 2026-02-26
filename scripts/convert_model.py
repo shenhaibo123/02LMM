@@ -39,6 +39,10 @@ def convert_torch2transformers_minimind(torch_path, transformers_path, dtype=tor
 def convert_torch2transformers_llama(torch_path, transformers_path, dtype=torch.float16):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     state_dict = torch.load(torch_path, map_location=device)
+    rope_scaling = getattr(lm_config, "rope_scaling", None)
+    if rope_scaling is None and getattr(lm_config, "inference_rope_scaling", False):
+        rope_scaling = {"type": "yarn", "factor": 16.0, "original_max_position_embeddings": 2048,
+                       "beta_fast": 32.0, "beta_slow": 1.0, "attention_factor": 1.0}
     llama_config = LlamaConfig(
         vocab_size=lm_config.vocab_size,
         hidden_size=lm_config.hidden_size,
@@ -49,6 +53,7 @@ def convert_torch2transformers_llama(torch_path, transformers_path, dtype=torch.
         max_position_embeddings=lm_config.max_position_embeddings,
         rms_norm_eps=lm_config.rms_norm_eps,
         rope_theta=lm_config.rope_theta,
+        rope_scaling=rope_scaling,
         tie_word_embeddings=True
     )
     llama_model = LlamaForCausalLM(llama_config)

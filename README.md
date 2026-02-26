@@ -38,6 +38,14 @@
 | [QiChat](https://github.com/Morton-Li/QiChat) | Decoder-only 对话模型训练框架 | 训练监控指标体系（ModelProbe / TrainingTracker） |
 | [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) | 通用 LLM 评测框架 | 标准评测集成 |
 
+如需在本地克隆上述参考项目（不修改，仅对照），可在项目根目录执行：
+
+```bash
+bash scripts/clone_reference_repos.sh
+```
+
+克隆结果位于 `reference/` 目录（已加入 .gitignore）。
+
 ---
 
 ## 快速开始
@@ -178,6 +186,39 @@ python scripts/serve_openai_api.py --device cuda:0  # 或 --device mps / --devic
 - Perplexity（当前值 / 滑动平均）
 - 梯度裁剪率 / 梯度范数
 - 学习率 / 训练速度 / 显存占用
+
+---
+
+## 评测与部署
+
+### 评测（看模型能力）
+
+- **本仓库自带评测脚本**：  
+  - `scripts/eval_model_benchmark.py --backend hf --model-path <本地 Transformers 模型> --tasks hellaswag arc_easy mmlu --limit 100`  
+  - 或先用 `scripts/serve_openai_api.py` 起一个 OpenAI 兼容服务，再用 `--backend api` 评测在线模型。
+- **中文客观题榜单（C-Eval / C-MMLU / A-CLUE / TMMLU+）**：  
+  - 使用 `lm-evaluation-harness` 直接评测：  
+    ```bash
+    lm_eval --model hf \
+      --model_args pretrained=<模型路径>,device=cuda,dtype=auto \
+      --tasks ceval* cmmlu* aclue* tmmlu* \
+      --batch_size 8 --trust_remote_code
+    ```
+  - 本项目 K 系列与 [MiniMind2](https://github.com/jingyaogong/minimind) 结构一致，可直接参考其官方中文榜单成绩（单位：准确率，%）：  
+
+    | 模型（等价本仓库）      | 参数量 | C-Eval | C-MMLU | A-CLUE | TMMLU+ |
+    |------------------------|--------|--------|--------|--------|--------|
+    | K-Base ≈ MiniMind2     | 104M   | 26.52  | 24.42  | 24.97  | 25.27  |
+    | K-Small ≈ MiniMind2-Small | 26M | 26.37  | 24.97  | 25.39  | 24.63  |
+    | K-MoE ≈ MiniMind2-MoE  | 145M   | 26.60  | 25.01  | 24.83  | 25.01  |
+
+  这一档小模型整体接近「随机 25%」略高一些，主要适合作为结构/训练流程教学与对比实验用基线。
+
+### 部署与长上下文
+
+- **RoPE 长度外推（YaRN）**：`eval_llm.py --inference_rope_scaling`；Transformers 模型可在 `config.json` 里配置 `rope_scaling`。
+- **模型转换**：`scripts/convert_model.py` 支持 PyTorch ↔ Transformers，并可导出带 `rope_scaling` 的 LlamaConfig。
+- **API 与推理**：`scripts/serve_openai_api.py` 提供 OpenAI 兼容接口；vLLM、llama.cpp、Ollama、MNN 等更详细用法见 [Doc/评测与部署.md](Doc/评测与部署.md)。
 
 ---
 

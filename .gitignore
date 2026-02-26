@@ -7,3 +7,4 @@ logs/
 checkpoints/
 .cache/
 dataset/*.jsonl
+reference/

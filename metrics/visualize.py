@@ -51,6 +51,27 @@ def _read_json_log(json_path: str) -> Dict[str, List[Tuple[int, float]]]:
     return data
 
 
+# 默认按「一类一图」分组，避免所有线挤在一张图里（更清晰）
+DEFAULT_TAG_GROUPS: Dict[str, List[str]] = {
+    "Loss": [
+        "Train/Loss",
+        "Train/Loss_Min",
+        "Train/Loss_Avg_1k",
+        "Train/Loss_Avg_3k",
+        "Train/Loss_Avg_5k",
+    ],
+    "PPL": [
+        "Train/PPL",
+        "Train/PPL_Avg_1k",
+        "Train/PPL_Avg_3k",
+        "Train/PPL_Avg_5k",
+    ],
+    "Learning Rate": ["Train/LearningRate"],
+    "Grad Clip": ["Train/GradClipRate", "Train/GradClipScale"],
+    "Speed (steps/s)": ["Train/Speed_steps_per_sec"],
+}
+
+
 def plot_training_curves(
     data: Dict[str, List[Tuple[int, float]]],
     output_path: str = "training_curves.png",
@@ -59,13 +80,13 @@ def plot_training_curves(
     tag_groups: Optional[Dict[str, List[str]]] = None,
 ) -> None:
     """
-    将指标数据绘制成多子图。
+    将指标数据绘制成多子图，每类指标单独一图，便于查看收敛趋势。
 
     Args:
         data: tag -> [(step, value), ...]
         output_path: 输出图片路径
         tag_groups: 子图分组，如 {"Loss": ["Train/Loss", "Train/Loss_Min"], ...}
-                    若为 None 则自动按前缀分组
+                    若为 None 则使用 DEFAULT_TAG_GROUPS（仅绘制存在的 tag）
     """
     try:
         import matplotlib
@@ -76,11 +97,17 @@ def plot_training_curves(
         return
 
     if tag_groups is None:
-        groups: Dict[str, List[str]] = {}
-        for tag in sorted(data.keys()):
-            prefix = tag.split("/")[0] if "/" in tag else "Other"
-            groups.setdefault(prefix, []).append(tag)
-        tag_groups = groups
+        # 只保留 data 中存在的 tag，保证每个子图只画有数据的线
+        tag_groups = {}
+        for group_name, tags in DEFAULT_TAG_GROUPS.items():
+            existing = [t for t in tags if t in data]
+            if existing:
+                tag_groups[group_name] = existing
+        # 未在默认分组中的 tag（如 Probe）归入 Other，避免漏画
+        assigned = {t for tags in tag_groups.values() for t in tags}
+        other = [t for t in sorted(data.keys()) if t not in assigned]
+        if other:
+            tag_groups["Other"] = other
 
     n_groups = len(tag_groups)
     if n_groups == 0:
