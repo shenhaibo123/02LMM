@@ -204,15 +204,8 @@ python scripts/serve_openai_api.py --device cuda:0  # 或 --device mps / --devic
       --tasks ceval* cmmlu* aclue* tmmlu* \
       --batch_size 8 --trust_remote_code
     ```
-  - 本项目 K 系列与 [MiniMind2](https://github.com/jingyaogong/minimind) 结构一致，可直接参考其官方中文榜单成绩（单位：准确率，%）：  
-
-    | 模型（等价本仓库）      | 参数量 | C-Eval | C-MMLU | A-CLUE | TMMLU+ |
-    |------------------------|--------|--------|--------|--------|--------|
-    | K-Base ≈ MiniMind2     | 104M   | 26.52  | 24.42  | 24.97  | 25.27  |
-    | K-Small ≈ MiniMind2-Small | 26M | 26.37  | 24.97  | 25.39  | 24.63  |
-    | K-MoE ≈ MiniMind2-MoE  | 145M   | 26.60  | 25.01  | 24.83  | 25.01  |
-
-  这一档小模型整体接近「随机 25%」略高一些，主要适合作为结构/训练流程教学与对比实验用基线。
+  - 本项目 K 系列结构参考了 [MiniMind2](https://github.com/jingyaogong/minimind)，但 **目前尚未在 C-Eval / C-MMLU / A-CLUE / TMMLU+ 上跑完整评测**。  
+    如需复现或对比，可使用上面的 `lm_eval` 命令在你自己的权重上实际跑一遍，然后再填表记录结果。
 
 ### 部署与长上下文
 
