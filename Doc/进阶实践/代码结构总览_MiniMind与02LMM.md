@@ -32,7 +32,7 @@
 
 根目录下的关键文件：
 
-- `README.md` / `README_en.md`：项目介绍、与上游 MiniMind 的关系、目录总览。
+- `README.md`：项目介绍、与上游 MiniMind 的关系、目录总览。
 - `requirements.txt`：项目依赖列表，用于创建 Python/conda 环境。
 - `LICENSE` / `CODE_OF_CONDUCT.md`：开源协议与行为规范。
 - `eval_llm.py`：对训练好的模型做简单评测或交互测试的脚本入口（通常会加载某个 checkpoint，然后跑一组问题）。

@@ -5,7 +5,7 @@
 
 <div align="center">
 
-中文 | [English](./README_en.md)
+中文文档
 
 </div>
 
