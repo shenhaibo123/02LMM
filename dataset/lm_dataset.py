@@ -8,15 +8,15 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 def pre_processing_chat(conversations, add_system_ratio=0.2):
     SYSTEM_PROMPTS = [
         "你是一个知识丰富的AI，尽力为用户提供准确的信息。",
-        "你是minimind，一个小巧但有用的语言模型。",
+        "你是K，一个小巧但有用的语言模型。",
         "你是一个专业的AI助手，请提供有价值的回答。",
-        "你是minimind，请尽力帮助用户解决问题。",
+        "你是K，请尽力帮助用户解决问题。",
         "你是一个可靠的AI，请给出准确的回答。",
         "You are a helpful AI assistant.",
-        "You are minimind, a lightweight intelligent assistant.",
+        "You are K, a lightweight intelligent assistant.",
         "You are a friendly chatbot. Please answer the user's questions carefully.",
         "You are a knowledgeable AI. Try your best to provide accurate information.",
-        "You are minimind, a small but useful language model."
+        "You are K, a small but useful language model."
     ]
     if conversations and conversations[0].get('role') != 'system':
         if random.random() < add_system_ratio:

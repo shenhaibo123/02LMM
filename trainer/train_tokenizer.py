@@ -2,10 +2,12 @@
 # Note: It is not recommended to re-train the tokenizer. MiniMind already includes one. This script is for learning and reference only. Training models with different tokenizers will lead to inconsistent outputs and reduce model reusability in the community.
 import os
 import json
+from pathlib import Path
 from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
 
-DATA_PATH = '../dataset/pretrain_hq.jsonl'
-TOKENIZER_DIR = '../model_learn_tokenizer/'
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_PATH = str(_PROJECT_ROOT / "dataset" / "pretrain_hq.jsonl")
+TOKENIZER_DIR = str(_PROJECT_ROOT / "model_learn_tokenizer")
 VOCAB_SIZE = 6400
 
 def get_texts(data_path):

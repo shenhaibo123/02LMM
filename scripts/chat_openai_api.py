@@ -12,7 +12,7 @@ while True:
     query = input('[Q]: ')
     conversation_history.append({"role": "user", "content": query})
     response = client.chat.completions.create(
-        model="minimind",
+        model="K",
         messages=conversation_history[-(history_messages_num or 1):],
         stream=stream,
         temperature=0.7,

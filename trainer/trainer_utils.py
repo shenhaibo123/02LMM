@@ -10,6 +10,7 @@ import math
 import numpy as np
 import torch
 import torch.distributed as dist
+from pathlib import Path
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import Sampler
 from transformers import AutoTokenizer
@@ -34,7 +35,7 @@ def is_main_process():
 
 def Logger(content):
     if is_main_process():
-        print(content)
+        print(content, flush=True)
 
 
 def get_lr(current_step, total_steps, lr):
@@ -51,16 +52,37 @@ def init_distributed_mode():
     return local_rank
 
 
+def get_device_type(device_str: str) -> str:
+    """从设备字符串中提取设备类型（cuda / mps / cpu）。"""
+    if "cuda" in device_str:
+        return "cuda"
+    if "mps" in device_str:
+        return "mps"
+    return "cpu"
+
+
+def get_best_device() -> str:
+    """自动检测最佳可用设备。"""
+    if torch.cuda.is_available():
+        return "cuda:0"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def setup_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
-def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir='../checkpoints', **kwargs):
+def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir=None, **kwargs):
+    if save_dir is None:
+        save_dir = str(_project_root() / "checkpoints")
     os.makedirs(save_dir, exist_ok=True)
     moe_path = '_moe' if lm_config.use_moe else ''
     ckp_path = f'{save_dir}/{weight}_{lm_config.hidden_size}{moe_path}.pth'
@@ -103,7 +125,8 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         torch.save(resume_data, resume_tmp)
         os.replace(resume_tmp, resume_path)
         del state_dict, resume_data
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     else:  # 加载模式
         if os.path.exists(resume_path):
             ckp_data = torch.load(resume_path, map_location='cpu')
@@ -116,13 +139,22 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         return None
 
 
-def init_model(lm_config, from_weight='pretrain', tokenizer_path='../model', save_dir='../out', device='cuda'):
+def _project_root() -> Path:
+    # trainer/trainer_utils.py -> <root>
+    return Path(__file__).resolve().parents[1]
+
+
+def init_model(lm_config, from_weight='pretrain', tokenizer_path=None, save_dir=None, device='cuda'):
+    root = _project_root()
+    tokenizer_path = str(root / "model") if tokenizer_path is None else str(tokenizer_path)
+    save_dir = str(root / "out") if save_dir is None else str(save_dir)
+
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = MiniMindForCausalLM(lm_config)
 
     if from_weight!= 'none':
         moe_suffix = '_moe' if lm_config.use_moe else ''
-        weight_path = f'{save_dir}/{from_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
+        weight_path = str(Path(save_dir) / f'{from_weight}_{lm_config.hidden_size}{moe_suffix}.pth')
         weights = torch.load(weight_path, map_location=device)
         model.load_state_dict(weights, strict=False)
 

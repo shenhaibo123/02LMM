@@ -1,0 +1,28 @@
+# lm-evaluation-harness YAML 配置文件
+# 用法: lm_eval --config scripts/eval_model_benchmark.yaml
+#
+# 也可以 override 单个字段:
+#   lm_eval --config scripts/eval_model_benchmark.yaml --limit 10
+#
+# ── 本地 HF 权重 ────────────────────────────────────
+model: hf
+model_args: "pretrained=./model,dtype=float32,trust_remote_code=True"
+
+# ── 如果要用 API 后端，注释上面两行，取消下面的注释 ──
+# model: local-chat-completions
+# model_args: "model=K,base_url=http://localhost:8998/v1/chat/completions,num_concurrent=1,max_retries=3,tokenizer=./model"
+
+tasks:
+  - hellaswag
+  - arc_easy
+  - arc_challenge
+  - piqa
+  - winogrande
+  - mmlu
+  - gsm8k
+  - truthfulqa_mc2
+
+batch_size: auto
+# num_fewshot: 5      # 取消注释可统一设置 few-shot 数
+# limit: 100          # 取消注释限制每任务样本数（调试用）
+log_samples: false
