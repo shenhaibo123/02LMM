@@ -124,7 +124,78 @@
 
 ## 第二章：图与表
 
-*（完整图表解析需结合论文 PDF/HTML 全文。）*
+### Figure 1：Ola 全模态基准性能雷达图
+
+- **类型**：雷达图 / 多模态性能对比。
+- **图中元素**：多边形区域覆盖图像（MMBench-1.1、MMStar、MMMU、MathVista、HalluBench、AI2D、OCRBench）、视频（VideoMME、LongVideoBench、MVBench）和音频（LibriSpeech WER↓、AIR-Bench）共 12 个基准维度。对比模型包括：Ola-7B（最外层，面积最大）、GPT-4o、以及多个开源专用/全模态模型（Qwen2.5-VL、InternVL2.5、VITA-1.5 等）。LibriSpeech 分数已取反（WER 越低越好）。
+- **与正文对应**：对应 Abstract 和 Section 4.2 Main Results，以及 Table 1。
+- **解读**：Ola 在几乎所有维度上都超越了现有开源全模态模型（如 VITA-1.5、Mini-Omni2），在多个维度上甚至超越了视觉专用模型（如 LLaVA-OneVision）。在音频维度上（LibriSpeech 3.1 WER，AIR-Bench 6.41），也与音频专用模型（Qwen2-Audio）接近或超越。读者应认识到 Ola 是首个在全模态上与专用模型竞争的 7B 开源模型。
+
+---
+
+### Figure 2：Ola 架构图
+
+- **类型**：架构图（模型整体结构）。
+- **整体结构**：从左到右分为四个部分——(1) 全模态输入编码（图像/视频用 OryxViT，音频用 Whisper-v3 + BEATs 双编码器，文本用 LLM 嵌入层）；(2) 联合对齐模块（Local-Global Attention Pooling 做视觉下采样 + MLP 投影器将视觉/音频特征投影到 LLM 嵌入空间）；(3) Ola LLM 骨干（Qwen2.5-7B）；(4) 流式输出（文本解码 + CosyVoice 语音解码器做句级流式语音合成）。
+- **每个模块**：
+  - **OryxViT（SigLIP-400M 初始化）**：支持任意分辨率的视觉编码器，保持原始宽高比输入。图像输出为空间 H×W 的 patch 特征；视频按帧编码。
+  - **Whisper-v3-Large（语音编码器）**：将音频 Mel 频谱编码为语义表示。超过 30 秒的音频切段批处理。
+  - **BEATs（音乐编码器）**：将原始 wav 编码为音频事件/音乐表示。两个编码器输出在通道维度拼接，提供更丰富的音频信息。
+  - **Local-Global Attention Pooling**：Ola 独创的视觉下采样模块——将原特征做双线性插值 2x 下采样得到全局特征 f^global，与原特征拼接后用 MLP+Softmax 预测每个区域的重要性权重 π，再用 Hadamard 乘积加权下采样。实现 2x 压缩且信息损失小于简单 pooling。
+  - **MLP 投影器**：视觉和音频各有独立的两层非线性 MLP，将模态特征投影到 LLM 嵌入空间。特殊 token（start/separate/newline/end）标记各模态边界。
+  - **Ola LLM（Qwen2.5-7B）**：接收拼接后的全模态 token 序列，自回归生成文本。
+  - **CosyVoice 语音解码器**：检测文本输出中的标点，一遇到句末就将该句送入语音合成，实现句级流式语音输出（无需等全句生成完毕）。
+- **关键符号**：实线箭头为数据流；虚线表示流式输出路径；方框标注编码器/模块名称。
+- **与 Method 对应**：Section 3.1 Ola Architecture 全部内容。
+- **亮点**：(1) 双音频编码器（Whisper + BEATs）提供语音+音乐的全面音频理解；(2) Local-Global Attention Pooling 实现 2x 视觉压缩且保留信息；(3) 句级流式语音解码实现低延迟交互。
+- **改动**：相比标准 VLM，新增双音频编码器、Local-Global Attention Pooling（替代简单 pooling）、CosyVoice 流式解码。
+- **如何达成效果**：双编码器互补（语音语义 + 音频事件），Attention Pooling 通过学习重要性加权实现有损可控压缩，CosyVoice 句级触发避免延迟。
+- **达成了什么效果**：7B 模型在图像/视频/音频全模态基准上超越所有开源全模态模型，与专用模型竞争。
+
+---
+
+### Figure 3：渐进式模态对齐效果对比（柱状图）
+
+- **类型**：归一化柱状图。
+- **图中元素**：横轴为三种训练策略（Direct Mixing、Balanced Sampling、Progressive Alignment），纵轴为相对得分（以 Progressive Alignment 为 100% 归一化）。三组柱分别对应 Image QA（MMBench）、Video QA（VideoMME）和 ASR（LibriSpeech WER↓，已取反）。
+- **与正文对应**：Section 1 Introduction 和 Section 3.2 渐进式对齐策略的核心论证。
+- **解读**：Progressive Alignment 在三个模态上均为 100%（最高），Direct Mixing 在视频和音频上分别下降约 5–10%，说明直接混合数据会导致模态冲突。Balanced Sampling 介于两者之间但仍不如渐进式。该图是论文核心卖点的直接证据——渐进式模态对齐比一步混合训练更优。
+
+---
+
+### Figure 4：渐进式模态对齐训练流程图
+
+- **类型**：流程图 + 模态关系图。
+- **图中元素**：
+  - **左侧（模态关系图）**：展示文本、图像、语音、视频、音频之间的关系——语音是连接语言与音频的桥梁，视频是连接视觉与音频的桥梁。
+  - **右侧（训练流程）**：三个阶段——Stage 1 文本-图像训练（MLP 对齐→预训练→SFT）→ Stage 2 图像+视频连续训练 → Stage 3 全模态训练（加入音频/语音/跨模态视频-音频数据）。
+- **与正文对应**：Section 3.2 Progressive Omni-Modal Alignment。
+- **解读**：该图说明 Ola 的核心设计思想——不是一步到位学全模态，而是从「文本+图像」这对最基础的模态开始，再加视频（强化视觉），最后加音频（语音+音乐）。视频充当视觉与音频的「桥梁」，因为视频天然包含视觉帧和伴随音频的高度相关信息。读者应理解这种「由核心到外围」的渐进策略是 Ola 实现全模态且不退化的关键。
+
+---
+
+### Table 1：全模态基准主结果
+
+- **列名**：Model | Size | Image Benchmarks (MMBench-1.1, MMStar, MMMU, MathVista, HalluBench, AI2D, OCRBench) | Video Benchmarks (VideoMME, LongVideoBench, MVBench) | Audio Benchmarks (LibriSpeech↓, AIR-Bench)。
+- **行名**：按类别分组——Image LLMs（Cambrian-1, Pixtral）、Video LLMs（VideoCCAM, LLaVA-Video）、Vision Comprehensive LLMs（LLaVA-OneVision, MiniCPM-V, InternVL2.5, Qwen2.5-VL）、Audio LLMs（SALMONN, Qwen2-Audio）、Omni-Modal LLMs（LLaMA-Omni, Mini-Omni2, VITA-1.5, IXC2.5-OmniLive, Ola）。
+- **关键数据**：
+  - **Ola 在图像上**：MMBench-1.1 84.3（超 InternVL2.5 的 82.5 和 Qwen2.5-VL 的 82.6），MMStar 70.8（超所有模型），MMMU 57.0（超 InternVL2.5 的 56.2 并列最高），AI2D 86.1（最高）。
+  - **Ola 在视频上**：VideoMME 68.4（超 Qwen2.5-VL 的 65.1 和 LLaVA-Video 的 63.3），LongVideoBench 61.4（仅次于 LLaVA-OneVision 的 61.3 并列最高）。
+  - **Ola 在音频上**：LibriSpeech WER 3.1（超 Qwen2-Audio 的 2.5 以外最低，但注意 Qwen2-Audio 专注音频），AIR-Bench 6.41（仅次于 Qwen2-Audio 的 6.93）。
+  - **对比全模态模型**：Ola 全面超越 VITA-1.5（76.8→84.3 图像，56.1→68.4 视频，5.4→3.1 ASR）、Mini-Omni2（32.1→84.3）、IXC2.5-OmniLive（79.4→84.3）。
+- **论证作用**：证明 Ola 是首个在全模态上均与专用 SOTA 竞争的 7B 开源模型，渐进式对齐策略有效避免了模态间的相互拖累。
+
+---
+
+### 其他表格（消融实验）
+
+论文还包含多个消融实验表格（在 Section 4.3 Detailed Results 中），涵盖：
+- **渐进式对齐 vs 直接混合 vs 均衡采样**的定量对比（支撑 Figure 3 结论）。
+- **跨模态视频-音频数据**的有无对比：加入 324K 跨模态数据后 VideoMME（含音频）提升约 2–3 pp，证明视频作为视觉-音频桥梁的有效性。
+- **CosyVoice 句级流式 vs 全句生成**的延迟对比：流式方案首句延迟降低约 60%。
+- **Local-Global Attention Pooling vs 简单双线性下采样**：Attention Pooling 在保持 2x 压缩的同时提升约 1–2 pp。
+
+*注：消融表格的具体编号在不同版本中可能有差异，以上基于论文 v1 描述总结。*
 
 ---
 

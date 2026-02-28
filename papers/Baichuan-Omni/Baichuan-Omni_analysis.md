@@ -111,7 +111,219 @@
 
 ## 第二章：图与表
 
-*（完整图表解析需结合论文 PDF/HTML 全文。）*
+### Figure 1：多模态评估对比（雷达图 + 柱状图）
+
+- **类型**：组合图——左侧为雷达图，右侧为柱状图。
+- **图中元素**：
+  - **左图（雷达图）**：多边形区域分别代表 Baichuan-omni、Qwen2-VL 和 VITA 三个模型，各顶点对应图像（image）、视频（video）和音频（audio）三个模态的覆盖情况。Baichuan-omni 的多边形面积最大，表明它在三个模态上都有覆盖；Qwen2-VL 仅覆盖图像和视频（缺少音频顶点）；VITA 覆盖全模态但面积较小。
+  - **右图（柱状图）**：横轴为模型名称，纵轴为所有基准的归一化平均分。归一化公式为 x_norm = (x - x_min + 10) / (x_max - x_min + 10)，消除不同基准量纲差异。Baichuan-omni 柱高最高，说明综合得分领先。
+- **与正文对应**：对应 Abstract 和 Section 1 Introduction 中「覆盖更多模态并超越 VITA」的论述。
+- **解读**：该图直观说明 Baichuan-omni 是唯一在图像、视频、音频三个模态上均有竞争力的开源 7B 全模态模型，综合得分超越当时领先的全模态开源模型 VITA（12B 激活参数的 MoE），也在模态覆盖广度上超过仅图文的 Qwen2-VL。读者应得出结论：Baichuan-omni 在 7B 规模下实现了全模态覆盖且综合性能领先。
+
+---
+
+### Figure 2：Baichuan-Omni 架构图（Architecture）
+
+- **类型**：架构图（模型结构 + 流式交互示意）。
+- **整体结构**：自左向右分为输入侧（多模态输入）→ 编码器（视觉/音频）→ 投影器/连接器 → MLLM（大语言模型骨干）→ 输出。图中同时展示了流式交互机制：模型先预测音频输入的起止边界，在音频输入期间流式编码视觉帧并计算注意力，音频结束后再将音频特征送入推理。
+- **每个模块**：
+  - **Visual Encoder（Siglip-384px）**：将图像/视频帧编码为视觉特征。输入为 384×384 像素图像（支持 AnyRes 动态分辨率），输出 182 个视觉 token。该编码器在消融实验（Table 8）中被选为最佳，平均得分 43.80，在 OCR 任务上尤其突出。
+  - **Visual Projector（Mean Pool + 2-layer MLP）**：将视觉 token 维度对齐到 LLM 嵌入空间。采用 2×2 卷积做 pooling 将 token 数从 729 降至 182，再通过两层 MLP 投影。Mean Pool 方案在 MLP > Mean Pool > Concat > C-abs 的排序中排第二，但在保持少 token 数的同时兼顾 OCR 能力，因此被选用。
+  - **Audio Encoder（Whisper-large-v3）**：将 30 秒音频（128 mel 频谱）编码为 1280 维音频表示。
+  - **Audio Projector（Conv-GMLP）**：用卷积门控 MLP 替代传统 pooling 对音频表示下采样，详见 Figure 5。
+  - **Video Projector**：在视觉编码基础上增加 2×2 卷积做 token 长度调节（182–546 token），学习率 4e-6 微调。
+  - **MLLM Backbone（7B LLM）**：接收对齐后的多模态 token 序列，统一做注意力计算与自回归生成。
+  - **流式交互模块**：模型预测音频输入起止，期间流式编码视频帧并计算注意力，音频结束后将音频特征送入推理，实现音视频的流式输入。
+- **关键符号**：实线箭头表示前向数据流（编码→投影→LLM）；虚线区域标注「streaming fashion」表示流式处理路径；方框内标注各编码器/投影器名称。
+- **与 Method 对应**：对应 Section 3.2.1（Image-Language Branch）、3.2.2（Video-Language Branch）、3.2.3（Audio-Language Branch）和 Section 1 第三个贡献点（流式交互）。
+- **亮点**：(1) 统一架构同时支持图像、视频、音频三模态输入；(2) Conv-GMLP 音频投影器替代传统 pooling，在高下采样率下保持音频性能；(3) 流式音视频交互——先预测音频边界、流式编码视觉帧，实现实时输入。
+- **改动**：相比标准 VLM（如 LLaVA），新增了音频分支（Whisper + Conv-GMLP）、视频投影器、以及流式交互机制（音频边界预测 + 视觉流式编码）。
+- **如何达成效果**：Conv-GMLP 利用卷积层做序列级别的信息聚合下采样（而非简单 pooling 丢弃），保留更多音频细节；流式交互通过异步编码视觉帧+后置音频推理，避免等待完整输入。
+- **达成了什么效果**：全模态基准上超越 VITA（12B 激活），音频 ASR 大幅领先（WenetSpeech CER 7.1% vs VITA 12.2%），支持实时音视频交互。
+
+---
+
+### Figure 3：数据构成示意图
+
+- **类型**：示意图 / 信息图。
+- **图中元素**：展示 Baichuan-omni 训练数据的模态分类——文本（text）、图文（image-text）、视频文（video-text）、音频文（audio-text）、以及跨模态交互数据（image-audio-text、video-audio-text）。各类数据以不同颜色/区块表示，标注数据来源（开源/合成/内部标注）。
+- **与正文对应**：对应 Section 3.1 High-Quality Multimodal Data 全部内容。
+- **解读**：该图说明数据涵盖五大模态组合，且跨模态交互数据（图像+音频+文本、视频+音频+文本）是专门构造的——将文本按 1:3 拆分，前 1/4 用 TTS 转语音作为音频输入，后 3/4 为预测目标，44 种音色保证多样性。读者应认识到这种跨模态数据构造方式是 Baichuan-omni 实现全模态交互的关键数据基础。
+
+---
+
+### Figure 4：训练流水线（Training Pipeline）
+
+- **类型**：流程图 / 训练阶段示意。
+- **整体结构**：从左到右分为两大阶段——预训练阶段（Pretraining，左侧）和微调阶段（Fine-tuning，右侧）。
+  - **预训练阶段**：分为 Image-Language Branch（三阶段）→ Video-Language Branch（两阶段）→ Audio-Language Branch → Omni-Alignment。
+  - **微调阶段**：从跨模态交互数据出发，筛选模型已有能力的数据子集，进行多模态多任务 SFT。
+- **每个模块**：
+  - **Image-Language Stage I**：冻结 LLM 和视觉编码器，仅训练视觉投影器（lr=1e-3），学习图文初始对齐。
+  - **Image-Language Stage II**：冻结 LLM，训练投影器+视觉编码器（lr=1e-5），加入 OCR/chart 专项数据 130K。
+  - **Image-Language Stage III**：解冻 LLM，全参数更新（lr=1e-5），加入交错数据和纯文本维持 LLM 原始能力。
+  - **Video-Language**：冻结视觉编码器+LLM，仅训练视频投影器（lr=4e-6），1fps 采样最多 48 帧。先用图文数据再混合视频文数据，渐进式增强。
+  - **Audio-Language**：冻结 LLM，训练音频编码器+Conv-GMLP 投影器，使用长音频-文本序列（最长 4K token）。
+  - **Omni-Alignment**：所有模块一起训练，混合高质量图/视频/音频文本对，建立全模态理解。
+  - **SFT**：600K 实例、200+ 任务，涵盖文本/音频/图文/视频文/图音交互数据；使用 packing + flash-attention2 cuseg_len 做样本隔离加速。
+- **关键符号**：箭头表示训练阶段顺序；冰冻图标（❄️）表示冻结参数；火焰图标（🔥）表示训练参数。
+- **与 Method 对应**：对应 Section 3.2（Multimodal Alignment Pre-training）和 Section 3.3（Multimodal Supervised Fine-Tuning）。
+- **亮点**：(1) 渐进式训练——从单模态对齐逐步到全模态对齐再到多任务 SFT；(2) 利用图文训练成果引导视频训练；(3) SFT 时按模型已知数据筛选，避免强行注入未知知识导致幻觉。
+- **改动**：相比一步到位训练，拆成多分支独立对齐 + Omni-Alignment + SFT 三大阶段，每阶段目标单一。
+- **达成了什么效果**：语言能力（MMLU 65.3、CMMLU 72.2）未因多模态训练退化；视觉超越 MiniCPM-Llama3-V（同参数级）；音频 ASR 大幅领先。
+
+---
+
+### Figure 5：Conv-GMLP 架构图
+
+- **类型**：架构图（模块级细节）。
+- **整体结构**：输入为音频表示序列 → 通过两个分支（上分支：卷积层1 → 卷积层2，下分支：卷积层1 → SiLU 门控）→ 两分支逐元素相乘 → 加上残差捷径（residual shortcut）→ 输出。
+- **每个模块**：
+  - **两个卷积层（上分支）**：每层将序列长度缩短 n 倍，同时特征通道数扩大 n 倍（n 为下采样率）。两层级联后总下采样率为 n²（如 n=4 则 16 倍）。
+  - **门控分支（下分支）**：同样有卷积层，输出经 SiLU 激活函数生成 0~1 区间的门控值，逐元素控制上分支的信息通过量。
+  - **残差捷径**：对输入做线性投影后直接加到输出上，确保梯度反传通畅，避免下采样过程中信息完全丢失。
+- **关键符号**：箭头表示数据流；×表示逐元素乘法（门控）；+表示残差加法。
+- **与 Method 对应**：对应 Section 3.2.3 Audio-Language Branch 中「Conv-GMLP 替代传统 pooling」的描述。
+- **亮点**：用卷积做下采样（而非简单 stride pooling），同时门控机制控制信息流，在高下采样率下保留更多音频信息。
+- **改动**：替代了传统的 stride-n pooling 方案，新增门控 MLP 结构和残差连接。
+- **如何达成效果**：卷积层在下采样的同时做局部特征聚合（类似学习了哪些帧最重要），门控进一步过滤冗余；残差保证原始信号不完全丢失。
+- **达成了什么效果**：消融实验（Figure 6）显示下采样率从 2 到 8，ASR 性能仅下降 0.3%–0.6%（7.7%→8.0% WER），远优于简单 pooling，展现了出色的序列压缩鲁棒性。
+
+---
+
+### Figure 6：下采样率消融（柱状图）
+
+- **类型**：柱状图。
+- **图中元素**：横轴为下采样率（2、4、8），纵轴为多个 ASR 测试集（Fleurs zh/en、WenetSpeech net/meeting、KeSpeech）的平均 WER。每个柱子代表一个下采样率下的平均 WER。
+- **与正文对应**：对应 Section 4.5.3 Audio-Language Branch 消融实验。
+- **解读**：下采样率=2 时 WER 最低（7.7%）；下采样率=4 时 WER 8.3%；下采样率=8 时 WER 8.0%（反而略好于 4）。关键发现是：即使下采样率从 2 增加到 8（音频 token 数减少 4 倍），性能下降极小（仅 0.3%），证明 Conv-GMLP 的序列压缩能力远优于简单 pooling。率=8 优于 4 的反常现象也说明 Conv-GMLP 在更激进压缩下仍能自适应保留关键信息。
+
+---
+
+### Table 1：综合基准结果
+
+- **列名**：Model | MMLU (Acc.) | CMMLU (Acc.) | AGIEval (Acc.) | C-Eval (Acc.)。
+- **行名**：GPT-4o（闭源）、MAP-Neo/Qwen1.5-Chat/Llama3-Instruct/OLMo（开源纯文本）、VITA（开源全模态 MoE 8×7B）、Baichuan-omni（开源全模态 7B）。
+- **关键数据**：
+  - Baichuan-omni 在中文基准上大幅超越 VITA：CMMLU 72.2% vs 46.6%（+25.6 pp），C-Eval 68.9% vs 56.7%（+12.2 pp）。
+  - AGIEval 47.7% vs VITA 46.2%（小幅领先）。
+  - MMLU 65.3% 低于 VITA 71.0%（VITA 用 8×7B MoE，英文能力更强）。
+- **论证作用**：证明 Baichuan-omni 在中文综合能力上显著超越当时唯一的开源全模态模型 VITA，且超越多个同规模纯文本 LLM。
+
+---
+
+### Table 2：图像多选题基准
+
+- **列名**：Model | MMBench | MMBench-CN | M3GIA | SEED-IMG | MME | MMMU | HallusionBench。
+- **关键数据**：
+  - Baichuan-omni 全面超越 VITA：MMBench 76.2 vs 74.7、MMBench-CN 74.9 vs 71.4、M3GIA 34.7 vs 27.7、SEED-IMG 74.1 vs 72.6、MMMU 47.3 vs 45.3、HallusionBench 47.8 vs 39.7。
+  - 与 MiniCPM-Llama3-V（视觉专用 8B）竞争：在 MMBench-CN、SEED-IMG、MME、MMMU、HallusionBench 上均超越或持平。
+  - 与 Qwen2-VL 仍有差距（如 MMBench 76.2 vs 86.4）。
+- **论证作用**：证明全模态模型在图像理解上可以竞争甚至超越同规模视觉专用模型。
+
+---
+
+### Table 3：图像 VQA 基准
+
+- **列名**：Model | RealWorldQA | MMVet | MathVista-mini | TextVQA | ChartQA | OCRBench。
+- **关键数据**：
+  - Baichuan-omni 在 MMVet（65.4）上大幅超越 MiniCPM（52.0）和 VITA（41.6），仅次于 GPT-4o（69.1）。
+  - ChartQA 79.6 超越 VITA（76.6）和 MiniCPM（72.0）。
+  - TextVQA 74.3、OCRBench 70.0 中规中矩。
+- **论证作用**：证明 Baichuan-omni 在开放式 VQA、图表理解上具备强竞争力。
+
+---
+
+### Table 4：视频理解基准（General VQA）
+
+- **列名**：Model | # Frames | MVBench | Egoschema | VideoMME | Perception-Test。
+- **关键数据**：
+  - Baichuan-omni（48 帧）vs VITA（32 帧）：MVBench 60.9 vs 53.4（+7.5）、Egoschema 58.8 vs 53.9（+4.9）、VideoMME 58.2 vs 56.1（+2.1）、Perception-Test 56.8 vs 56.2（+0.6），平均提升约 4%。
+  - 超越 GPT-4V 在 MVBench（43.7）和 Egoschema（55.6）。
+  - AnyRes + 48 帧是最优配置（消融见 Table 10）。
+- **论证作用**：证明 Baichuan-omni 的视频理解能力全面超越 VITA 和多个视频专用开源模型。
+
+---
+
+### Table 5：视频开放问答基准
+
+- **列名**：Model | # Frames | ActivityNet-QA (Acc./Score) | MSVD-QA (Acc./Score)。
+- **关键数据**：
+  - Baichuan-omni ActivityNet-QA Acc. 58.6 超越 VITA（55.0）和 Gemini 1.5 Pro（56.7），仅次于 GPT-4o（61.9）。
+  - MSVD-QA Acc. 72.2、Score 4.0，为所有开源模型最高。
+- **论证作用**：证明 Baichuan-omni 在生成式视频问答上能力最强，生成回复更丰富、描述更准确。
+
+---
+
+### Table 6：ASR 基准结果
+
+- **列名**：Scene | Dataset | Model | WER (CER)。
+- **关键数据**：
+  - 中文通用 ASR：Fleurs zh WER 7.0%（Qwen2-Audio 9.0%，Whisper-v3 12.4%）；WenetSpeech test_net CER 7.1%（VITA 12.2%，近 50% 提升）。
+  - 会议场景：WenetSpeech test_meeting CER 8.9%（VITA 16.5%）。
+  - 中文方言：KeSpeech 平均 CER 6.7%，所有方言全面领先 Qwen2-Audio 和 Whisper-v3。
+  - 英文：Fleurs en WER 4.7%，大幅优于 Qwen2-Audio（15.7%）。
+- **论证作用**：证明 Conv-GMLP 音频投影器 + 大规模音频数据使 Baichuan-omni 在 ASR 上远超同类全模态和音频专用模型。
+
+---
+
+### Table 7：S2TT 和 AIR-Bench 结果
+
+- **列名**：Task | Dataset | Model | Metrics | Results。
+- **关键数据**：
+  - 英→中翻译 Covost-2 en2zh BLEU 40.2（Qwen2-Audio 34.1，+6 BLEU）。
+  - 中→英翻译 zh2en BLEU 22.1（与 Qwen2-Audio 23.3 接近）。
+  - AIR-Bench speech 7.42、sound 7.26，均超 Qwen2-Audio（7.18、6.99）和 VITA（6.40、6.59）。
+- **论证作用**：证明音频能力不止 ASR，在翻译和音频聊天上也领先。
+
+---
+
+### Table 8：视觉编码器对比消融
+
+- **列名**：Model | Params. | Resolution | OCR | NIU | Spatial | Chart | Common Sense | Video | Avg.。
+- **关键数据**：
+  - siglip-so400m-patch14-384（428M，384px）平均 43.80 最高，OCR 44.67 最高。
+  - InternViT-6B（5.9B）虽参数量最大但得分最低（29.99），说明**编码器参数量与性能无直接正相关**。
+  - 7 个编码器（含 CLIP、DFN、EVA、InternViT 系列）在相同条件下对比。
+- **论证作用**：支撑选择 siglip-so400m 的决策，并揭示「更大编码器不一定更好」的重要发现。
+
+---
+
+### Table 9：AnyRes 消融
+
+- **列名**：Method | TextVQA | DocVQA | InfographicVQA | OCRBench。
+- **关键数据**：
+  - Baseline+AnyRes vs Baseline：DocVQA 87.48 vs 72.61（+14.87 pp），InfographicVQA 62.80 vs 47.54（+15.26 pp）。
+  - OCRBench 78.44 vs 76.92（+1.52）。
+- **论证作用**：证明 AnyRes 动态分辨率对文档理解类任务提升极大。
+
+---
+
+### Table 10：视频分支消融
+
+- **列名**：w/ Pre-training | Resolution | # Frames | # Tokens | MVBench | VideoMME | ActivityNet-QA | Avg.。
+- **关键数据**：
+  - AnyRes + 48帧 + 预训练（最优配置）：平均 59.2%。
+  - 固定384px + 64帧 + 预训练：54.7%。
+  - 无预训练：49.1%（下降 5.6 pp），预训练对视频理解至关重要。
+  - AnyRes 比固定分辨率提升约 5%。
+- **论证作用**：支撑三个关键设计选择——AnyRes、视频预训练、帧数控制。
+
+---
+
+### Table 11：SFT 前后图像任务对比
+
+- **列名**：Method | MMBench | MMBench-CN | MMMU | SEED-IMG | ChartQA | MathVista | MMVet | RealWorldQA。
+- **关键数据**：SFT 后大部分指标提升，如 MMBench-CN 69.3→74.9（+5.6），MMVet 55.0→65.4（+10.4），ChartQA 76.0→79.6。MMMU 略降（48.3→47.3），说明 SFT 在知识推理上略有权衡。
+- **论证作用**：证明多模态 SFT 总体有益且不损害基础能力。
+
+---
+
+### Table 12：SFT 前后视频任务对比
+
+- **列名**：Method | Egoschema | MVBench | VideoMME | Perception | ActivityNet-QA | MSVD-QA (Acc./Score)。
+- **关键数据**：SFT 后几乎所有视频指标提升，如 Egoschema 54.0→58.8（+4.8），ActivityNet-QA 55.4→58.6（+3.2），MSVD-QA Acc. 66.6→72.2（+5.6）。MVBench 略降（61.3→60.9）。
+- **论证作用**：证明多模态 SFT 对视频理解有显著正面作用。
 
 ---
 

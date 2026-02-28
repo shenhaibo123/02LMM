@@ -163,6 +163,35 @@
 
 ---
 
+### 主要实验表格补充
+
+#### Table 2（主结果）：全模态基准性能
+
+- **对比模型**：Qwen2.5-Omni、Gemini-2.5-Pro/Flash、GPT-4o 等。
+- **基准**：DailyOmni（全模态）、WorldSense（空间推理）、MMAR（音频推理）、Video-MME（视频理解）等。
+- **关键数据**：OmniVinci-9B 在 DailyOmni 上相比 Qwen2.5-Omni 提升 +19.05，在 MMAR 上 +1.7，在 Video-MME 上 +3.9。
+- **论证作用**：证明 OmniAlignNet + TEG + CRTE 三要素以 0.2T token（Qwen2.5-Omni 的 1/6）实现全模态理解 SOTA。
+
+#### Tables 3–6：单模态详细结果
+
+- **Table 3（图像理解）**：MMBench、MMStar、MMMU 等。OmniVinci 与专用视觉模型（InternVL2.5、Qwen2.5-VL）竞争。
+- **Table 4（视频理解）**：Video-MME、MVBench、LVBench 等。OmniVinci 超越多数同规模模型。
+- **Table 5（音频理解）**：LibriSpeech WER、AIR-Bench、MMAU 等。双编码器策略提升音频表现。
+- **Table 6（全模态联合）**：DailyOmni、WorldSense——需同时理解视觉+音频才能回答的任务，OmniVinci 优势最明显。
+- **论证作用**：证明全模态训练不损害单模态性能，且在跨模态联合任务上优势显著。
+
+#### Tables 7–12：消融实验
+
+- **Table 7**：OmniAlignNet 的有无对比——移除后 DailyOmni 下降约 5 pp。
+- **Table 8**：TEG 分组大小 T_G 的消融——T_G=5 最优。
+- **Table 9**：CRTE 的有无对比——移除后视频+音频联合任务下降 2–3 pp。
+- **Table 10**：训练数据规模消融——0.2T vs 0.1T vs 0.05T 的性能变化。
+- **Table 11**：数据组成消融——跨模态对话数据的贡献。
+- **Table 12**：下游应用（机器人、医疗、智能工厂）的定性/定量结果。
+- **论证作用**：逐项验证每个架构创新和数据策略的贡献。
+
+---
+
 ## 第三章：详细总结
 
 - **基本信息**：OmniVinci: Enhancing Architecture and Data for Omni-Modal Understanding LLM；NVIDIA 团队；arXiv:2510.15870；代码/模型/网页见首行链接。
