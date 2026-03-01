@@ -1,0 +1,14 @@
+# Nginx：仅 80 端口提供正常主页；443 由 Xray 直连（VLESS+TCP+TLS+XTLS-Vision，无 path）
+# 替换：YOUR_DOMAIN
+
+# 80 端口：正常请求，本地正常主页
+server {
+    listen 80;
+    listen [::]:80;
+    server_name YOUR_DOMAIN;
+    root /var/www/html;
+    index index.html;
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

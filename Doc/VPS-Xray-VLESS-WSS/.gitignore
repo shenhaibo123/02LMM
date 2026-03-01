@@ -1,0 +1,4 @@
+# 个人代理配置（含服务器地址），不提交
+clash.yaml
+# Mac 运行时目录（install/start 后生成，含证书与日志）
+mac/mac-vps/
