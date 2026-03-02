@@ -1,0 +1,55 @@
+# Omni 训练项目依赖
+# 安装方式: pip install -r requirements.txt
+
+# 训练框架
+ms-swift>=3.12.0
+modelscope>=1.20.0
+
+# 基础依赖
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+transformers>=4.45.0
+datasets>=3.0.0
+accelerate>=0.27.0
+peft>=0.7.0
+
+# 并行训练
+deepspeed>=0.14.0
+
+# 注意力优化 (推荐)
+# flash-attn>=2.5.0  # 需要单独安装: pip install flash-attn --no-build-isolation
+
+# 音频处理
+soundfile>=0.12.0
+librosa>=0.10.0
+openai-whisper>=20231117
+
+# 图像处理
+Pillow>=10.0.0
+
+# 语音合成 (CosyVoice2)
+# git clone https://github.com/FunAudioLLM/CosyVoice.git && cd CosyVoice && pip install -e .
+
+# 监控与可视化
+matplotlib>=3.8.0
+tensorboard>=2.14.0
+wandb>=0.16.0
+
+# 评测
+jiwer>=3.0.0          # WER/CER 计算
+nltk>=3.8.0           # BLEU 计算
+rouge-score>=0.1.2    # ROUGE 计算
+
+# 数据处理
+jsonlines>=4.0.0
+tqdm>=4.66.0
+rich>=13.7.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# 工具
+psutil>=5.9.0
+einops>=0.7.0
+sentencepiece>=0.1.99
+tiktoken>=0.5.0

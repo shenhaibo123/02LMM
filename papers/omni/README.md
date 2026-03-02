@@ -48,6 +48,7 @@
 - **检索关键词（中英）**：omni-modal, omni-modal LLM, “Omni” model, 全模态大模型, 全能模型。
 - **更新方式**：运行项目技能「收集 Omni」/「检查 Omni 新工作」/「今日 Omni 简报」，或直接调用 `omni-daily-collect`，会更新本清单与 [changelog.md](./changelog.md)。
 - **单篇精读**：若对某篇论文做深度分析，可在 `papers/{论文简称}/` 下建子目录，与 [paper-read](../../.cursor/skills/paper-read/SKILL.md) 约定一致。
+- **训练对比**：开源项目与 11 篇论文的**训练数据量、卡数、时长、阶段与每阶段任务**逐项对比见 [TRAINING_COMPARISON.md](./TRAINING_COMPARISON.md)。
 
 ---
 

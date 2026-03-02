@@ -1,0 +1,30 @@
+# Omni MS-Swift 训练依赖
+# ===================================
+
+# 核心框架
+ms-swift>=3.0
+modelscope>=1.23
+transformers>=4.45
+torch>=2.1
+
+# 训练加速
+deepspeed>=0.14
+flash-attn>=2.5      # 需要 CUDA，可选
+peft>=0.12
+
+# 数据处理
+datasets>=2.18
+soundfile
+librosa
+Pillow
+
+# 评测
+evalscope>=0.6
+vlmeval               # VLMEvalKit，可选
+
+# 监控与可视化
+matplotlib
+tqdm
+
+# 音频处理
+openai-whisper        # Whisper 模型支持

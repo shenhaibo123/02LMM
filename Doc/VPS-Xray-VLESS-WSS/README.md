@@ -10,7 +10,7 @@
 按下面顺序做，**只需在安装时填写一个域名**，其余由一键脚本完成（证书、UUID、配置、启动）。
 
 1. **先申请域名**  
-   在任意域名服务商购买域名（如 Cloudflare、Namecheap、阿里云、腾讯云等）。记下你要用来做代理的域名，例如 `proxy.example.com`。
+   在任意域名服务商购买域名（如 HostWind、Cloudflare、Namecheap、阿里云、腾讯云等）。记下你要用来做代理的域名，例如 `proxy.example.com`。
 
 2. **再购买 VPS**  
    在 Vultr、Hostwinds、DigitalOcean 等购买一台 Linux VPS（推荐 Ubuntu/Debian），记下分配到的 **公网 IP**。

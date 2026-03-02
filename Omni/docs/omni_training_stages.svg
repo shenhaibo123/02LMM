@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 200">
+  <defs>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#555"/>
+    </marker>
+  </defs>
+  <title>Six-Stage Training Pipeline</title>
+  
+  <text x="390" y="24" text-anchor="middle" font-size="14" font-weight="bold" fill="#212121">Six-Stage Training Pipeline</text>
+  
+  <g id="p1">
+    <rect x="10" y="50" width="115" height="100" rx="6" fill="#E3F2FD" stroke="#1976D2"/>
+    <text x="67" y="78" text-anchor="middle" font-weight="bold" font-size="11">P1 Align</text>
+    <text x="67" y="95" text-anchor="middle" font-size="9">Projector to LLM</text>
+    <text x="67" y="112" text-anchor="middle" font-size="8">100M img + 50Kh audio</text>
+    <text x="67" y="128" text-anchor="middle" font-size="8">LAION, LibriSpeech</text>
+  </g>
+  <path d="M 125 100 L 138 100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  
+  <g id="p2">
+    <rect x="143" y="50" width="115" height="100" rx="6" fill="#F3E5F5" stroke="#7B1FA2"/>
+    <text x="200" y="78" text-anchor="middle" font-weight="bold" font-size="11">P2 Encoder</text>
+    <text x="200" y="95" text-anchor="middle" font-size="9">OCR + audio events</text>
+    <text x="200" y="112" text-anchor="middle" font-size="8">500K + 500K</text>
+    <text x="200" y="128" text-anchor="middle" font-size="8">DocVQA, AudioSet</text>
+  </g>
+  <path d="M 258 100 L 271 100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  
+  <g id="p3">
+    <rect x="276" y="50" width="115" height="100" rx="6" fill="#E8F5E9" stroke="#2E7D32"/>
+    <text x="333" y="78" text-anchor="middle" font-weight="bold" font-size="11">P3 Pretrain</text>
+    <text x="333" y="95" text-anchor="middle" font-size="9">Full multimodal</text>
+    <text x="333" y="112" text-anchor="middle" font-size="8">~2T token</text>
+    <text x="333" y="128" text-anchor="middle" font-size="8">OmniCorpus, VALID</text>
+  </g>
+  <path d="M 391 100 L 404 100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  
+  <g id="p4">
+    <rect x="409" y="50" width="115" height="100" rx="6" fill="#FFF3E0" stroke="#E65100"/>
+    <text x="466" y="78" text-anchor="middle" font-weight="bold" font-size="11">P4 Long</text>
+    <text x="466" y="95" text-anchor="middle" font-size="9">32K+ context</text>
+    <text x="466" y="112" text-anchor="middle" font-size="8">50K+20K+30K</text>
+    <text x="466" y="128" text-anchor="middle" font-size="8">LongVideo, WenetSpeech</text>
+  </g>
+  <path d="M 524 100 L 537 100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  
+  <g id="p5">
+    <rect x="542" y="50" width="115" height="100" rx="6" fill="#FCE4EC" stroke="#C2185B"/>
+    <text x="599" y="78" text-anchor="middle" font-weight="bold" font-size="11">P5 SFT</text>
+    <text x="599" y="95" text-anchor="middle" font-size="9">Instruction follow</text>
+    <text x="599" y="112" text-anchor="middle" font-size="8">500K instruct</text>
+    <text x="599" y="128" text-anchor="middle" font-size="8">ShareGPT4V, barge-in</text>
+  </g>
+  <path d="M 657 100 L 670 100" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  
+  <g id="p6">
+    <rect x="675" y="50" width="95" height="100" rx="6" fill="#FFEBEE" stroke="#C62828"/>
+    <text x="722" y="78" text-anchor="middle" font-weight="bold" font-size="11">P6 RL/DPO</text>
+    <text x="722" y="95" text-anchor="middle" font-size="9">Preference + TTS</text>
+    <text x="722" y="112" text-anchor="middle" font-size="8">50K + 4-stage</text>
+    <text x="722" y="128" text-anchor="middle" font-size="8">GRPO, OmniDPO</text>
+  </g>
+  
+  <rect x="10" y="165" width="760" height="28" rx="4" fill="#FFF8E1" stroke="#FFA000"/>
+  <text x="390" y="183" text-anchor="middle" font-size="10" fill="#E65100">Breakthrough: 4.1 Sparse attention (1M ctx, 3.5x) | 4.2 3D-Resampler / Local-Global (96x video, 16x image)</text>
+</svg>

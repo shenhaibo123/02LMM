@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 280">
+  <defs>
+    <marker id="ar" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 6 3, 0 6" fill="#555"/>
+    </marker>
+  </defs>
+  <title>Omni Model Architecture</title>
+  
+  <rect x="0" y="80" width="100" height="120" rx="6" fill="#E3F2FD" stroke="#1976D2"/>
+  <text x="50" y="105" text-anchor="middle" font-size="12" font-weight="bold" fill="#1565C0">Input</text>
+  <line x1="50" y1="115" x2="50" y2="118" stroke="#1976D2"/>
+  <text x="50" y="132" text-anchor="middle" font-size="10" fill="#333">Image / Video</text>
+  <text x="50" y="148" text-anchor="middle" font-size="10" fill="#333">Audio</text>
+  <text x="50" y="164" text-anchor="middle" font-size="10" fill="#333">Text</text>
+  
+  <path d="M 100 140 L 125 140" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  
+  <rect x="130" y="60" width="120" height="70" rx="6" fill="#F3E5F5" stroke="#7B1FA2"/>
+  <text x="190" y="85" text-anchor="middle" font-size="11" font-weight="bold" fill="#4A148C">Vision Encoder</text>
+  <text x="190" y="102" text-anchor="middle" font-size="9" fill="#333">SigLIP-so400m-patch14-384</text>
+  <text x="190" y="118" text-anchor="middle" font-size="9" fill="#555">384, 729 to 182 tokens</text>
+  
+  <rect x="130" y="150" width="120" height="70" rx="6" fill="#F3E5F5" stroke="#7B1FA2"/>
+  <text x="190" y="175" text-anchor="middle" font-size="11" font-weight="bold" fill="#4A148C">Audio Encoder</text>
+  <text x="190" y="192" text-anchor="middle" font-size="9" fill="#333">Whisper-small (2B)</text>
+  <text x="190" y="208" text-anchor="middle" font-size="9" fill="#555">128 mel, 30s</text>
+  
+  <path d="M 250 95 L 275 95" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M 250 185 L 275 185" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  
+  <rect x="280" y="60" width="130" height="70" rx="6" fill="#FFF3E0" stroke="#E65100"/>
+  <text x="345" y="85" text-anchor="middle" font-size="11" font-weight="bold" fill="#BF360C">Visual Projector</text>
+  <text x="345" y="102" text-anchor="middle" font-size="9" fill="#333">MLP / 3D-Resampler</text>
+  <text x="345" y="118" text-anchor="middle" font-size="9" fill="#555">Q-Former optional</text>
+  
+  <rect x="280" y="150" width="130" height="70" rx="6" fill="#FFF3E0" stroke="#E65100"/>
+  <text x="345" y="175" text-anchor="middle" font-size="11" font-weight="bold" fill="#BF360C">Audio Projector</text>
+  <text x="345" y="192" text-anchor="middle" font-size="9" fill="#333">Conv-GMLP / MLP</text>
+  <text x="345" y="208" text-anchor="middle" font-size="9" fill="#555">8x down-sample</text>
+  
+  <path d="M 410 95 L 435 95" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <path d="M 410 185 L 435 185" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  
+  <rect x="440" y="70" width="180" height="140" rx="8" fill="#E8F5E9" stroke="#2E7D32"/>
+  <text x="530" y="100" text-anchor="middle" font-size="14" font-weight="bold" fill="#1B5E20">Qwen3-LLM</text>
+  <text x="530" y="120" text-anchor="middle" font-size="10" fill="#333">8B / 2B</text>
+  <text x="530" y="140" text-anchor="middle" font-size="9" fill="#555">Multimodal token sequence</text>
+  <text x="530" y="158" text-anchor="middle" font-size="9" fill="#555">TMRoPE time alignment</text>
+  <text x="530" y="176" text-anchor="middle" font-size="9" fill="#555">Optional: sparse attention</text>
+  <text x="530" y="194" text-anchor="middle" font-size="9" fill="#555">(InfLLM-V2 + Lightning)</text>
+  
+  <path d="M 620 140 L 645 140" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  
+  <rect x="650" y="70" width="75" height="55" rx="6" fill="#FFEBEE" stroke="#C62828"/>
+  <text x="687" y="95" text-anchor="middle" font-size="11" font-weight="bold" fill="#B71C1C">Text</text>
+  <text x="687" y="112" text-anchor="middle" font-size="9" fill="#333">Thinker, NTP</text>
+  
+  <rect x="650" y="155" width="75" height="55" rx="6" fill="#FFEBEE" stroke="#C62828"/>
+  <text x="687" y="180" text-anchor="middle" font-size="11" font-weight="bold" fill="#B71C1C">Speech</text>
+  <text x="687" y="197" text-anchor="middle" font-size="9" fill="#333">Talker, CosyVoice2</text>
+  
+  <path d="M 50 200 L 50 230 L 530 230 L 530 210" stroke="#9E9E9E" stroke-width="1" stroke-dasharray="4,2" fill="none" marker-end="url(#ar)"/>
+  <text x="280" y="222" text-anchor="middle" font-size="8" fill="#757575">text embed</text>
+  
+  <text x="410" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#212121">Omni: Multimodal Architecture</text>
+  <text x="410" y="46" text-anchor="middle" font-size="10" fill="#616161">Vision + Audio + Text to LLM to Text + Speech</text>
+</svg>
