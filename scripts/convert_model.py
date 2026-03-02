@@ -21,7 +21,7 @@ def convert_torch2transformers_minimind(torch_path, transformers_path, dtype=tor
     MiniMindForCausalLM.register_for_auto_class("AutoModelForCausalLM")
     lm_model = MiniMindForCausalLM(lm_config)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    state_dict = torch.load(torch_path, map_location=device)
+    state_dict = torch.load(torch_path, map_location=device, weights_only=False)
     lm_model.load_state_dict(state_dict, strict=False)
     lm_model = lm_model.to(dtype)  # 转换模型权重精度
     model_params = sum(p.numel() for p in lm_model.parameters() if p.requires_grad)
@@ -38,7 +38,7 @@ def convert_torch2transformers_minimind(torch_path, transformers_path, dtype=tor
 # LlamaForCausalLM结构兼容第三方生态
 def convert_torch2transformers_llama(torch_path, transformers_path, dtype=torch.float16):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    state_dict = torch.load(torch_path, map_location=device)
+    state_dict = torch.load(torch_path, map_location=device, weights_only=False)
     rope_scaling = getattr(lm_config, "rope_scaling", None)
     if rope_scaling is None and getattr(lm_config, "inference_rope_scaling", False):
         rope_scaling = {"type": "yarn", "factor": 16.0, "original_max_position_embeddings": 2048,

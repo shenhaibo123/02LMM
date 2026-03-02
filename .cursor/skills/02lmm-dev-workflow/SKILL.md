@@ -103,7 +103,7 @@ pin_memory = (device_type == "cuda")
 from metrics.probes import ModelProbe
 from metrics.tracker import TrainingTracker
 
-tracker = TrainingTracker(log_dir="logs/run_name")
+tracker = TrainingTracker(log_dir="out/logs/run_name")
 probe = ModelProbe()
 probe.attach(model, [f"model.layers.{i}" for i in [0, n//2, n-1]])
 
@@ -125,12 +125,12 @@ probe.deactivate()
 
 训练完成后绘制曲线：
 ```bash
-python metrics/visualize.py --log-dir logs/pretrain --output plots/pretrain.png
+python metrics/visualize.py --log-dir out/logs/pretrain --output plots/pretrain.png
 ```
 
 如果未安装 TensorBoard，也可使用 JSONL 日志：
 ```bash
-python metrics/visualize.py --json-log logs/metrics.jsonl --output plots/run.png
+python metrics/visualize.py --json-log out/logs/pretrain/metrics.jsonl --output plots/run.png
 ```
 
 ## 6. 评测流程

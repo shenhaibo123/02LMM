@@ -2,8 +2,8 @@
 训练曲线绘图工具 —— 从 TensorBoard 事件文件或 JSON 日志生成训练曲线图。
 
 用法：
-    python metrics/visualize.py --log-dir logs/pretrain --output plots/pretrain.png
-    python metrics/visualize.py --json-log logs/metrics.json --output plots/run.png
+    python metrics/visualize.py --log-dir out/logs/pretrain --output plots/pretrain.png
+    python metrics/visualize.py --json-log out/logs/pretrain/metrics.jsonl --output plots/run.png
 """
 
 from __future__ import annotations

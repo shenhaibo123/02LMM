@@ -30,7 +30,7 @@ def init_model(args):
         moe_suffix = '_moe' if args.use_moe else ''
         save_dir = Path(args.save_dir) if Path(args.save_dir).is_absolute() else PROJECT_ROOT / args.save_dir
         ckp = save_dir / f'{args.weight}_{args.hidden_size}{moe_suffix}.pth'
-        model.load_state_dict(torch.load(str(ckp), map_location=args.device), strict=True)
+        model.load_state_dict(torch.load(str(ckp), map_location=args.device, weights_only=False), strict=True)
         if args.lora_weight != 'None':
             apply_lora(model)
             load_lora(model, str(save_dir / "lora" / f"{args.lora_weight}_{args.hidden_size}.pth"))

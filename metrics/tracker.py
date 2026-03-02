@@ -6,7 +6,7 @@
 指标写入本地 JSONL 文件，并支持训练结束时直接画图（不依赖 TensorBoard）。
 
 典型用法：
-    tracker = TrainingTracker(log_dir="logs/pretrain")
+    tracker = TrainingTracker(log_dir="out/logs/pretrain")
 
     for step, (loss, ppl) in enumerate(train_loop):
         tracker.update_loss(loss, split="train")

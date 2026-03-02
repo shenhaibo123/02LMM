@@ -13,7 +13,7 @@
 
 ## 项目简介
 
-**02LMM** 是一个面向学习者的大模型全流程实践项目。从 25.8M 参数的超小语言模型出发，覆盖：
+**02LMM** 专注「从零到大模型」的教学与动手实践：从 25.8M 参数的超小语言模型出发，覆盖：
 
 - **预训练（Pretrain）** — 从零学习自回归语言建模
 - **监督微调（SFT / LoRA）** — 让模型学会对话
@@ -22,6 +22,8 @@
 - **训练观测** — 集成 Loss/PPL/梯度范数/表征多样性/输出分布等 30+ 指标
 - **标准评测** — 基于 lm-evaluation-harness 的自动化评测（HellaSwag / ARC / MMLU / GSM8K 等）
 - **推理部署** — OpenAI 兼容 API、Web Demo，兼容 llama.cpp / vLLM / ollama
+
+本仓库**教学**涵盖多模态概念与 Omni 展望（见 Doc）；**全模态（Omni）的实战**（训练、论文跟踪等）在独立仓库 [Omni](https://github.com/shenhaibo123/Omni)。
 
 > **设计原则**
 > 1. 核心算法全部 PyTorch 原生实现，不依赖第三方训练框架的抽象接口
@@ -95,7 +97,7 @@ python trainer/train_pretrain.py --device cuda:0 --batch_size 32 --max_seq_len 3
 python trainer/train_pretrain.py --device cpu --batch_size 4 --max_seq_len 128 --epochs 1 --hidden_size 64 --num_hidden_layers 2 --num_workers 0
 ```
 
-训练完成后会在 `out/` 目录生成权重文件，在 `logs/` 目录生成指标 JSONL 与曲线图（本地输出，不依赖 TensorBoard）。
+训练完成后，权重与续训 checkpoint 会保存在 `out/` 目录，指标 JSONL 与曲线图保存在 `out/logs/` 下对应任务子目录（如 `out/logs/pretrain/`），无需 TensorBoard。
 
 ### 评测模型
 
@@ -147,7 +149,11 @@ python scripts/serve_openai_api.py --device cuda:0  # 或 --device mps / --devic
 │   ├── web_demo.py             #   Streamlit Web Demo
 │   ├── convert_model.py        #   模型格式转换
 │   └── ...                     #   Tokenizer 对比/评估等工具
-├── Doc/                        # 学习文档
+├── Doc/                        # 学习文档（含环境与运维附录）
+├── out/                        # 训练产出（权重、续训状态、日志）
+│   ├── *.pth, *_resume.pth     # 权重与续训
+│   ├── lora/                   # LoRA 默认输出
+│   └── logs/<task>/            # 各任务指标 JSONL 与曲线图
 ├── eval_llm.py                 # 交互式推理入口
 └── requirements.txt
 ```

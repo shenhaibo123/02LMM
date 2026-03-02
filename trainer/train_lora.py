@@ -62,7 +62,7 @@ def train_epoch(epoch, loader, iters, lora_params, start_step=0, wandb=None):
             lora_save_path = f'{args.save_dir}/{args.lora_name}_{lm_config.hidden_size}.pth'
             # LoRA只保存LoRA权重
             save_lora(model, lora_save_path)
-            lm_checkpoint(lm_config, weight=args.lora_name, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir=str(PROJECT_ROOT / "checkpoints"))
+            lm_checkpoint(lm_config, weight=args.lora_name, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir=args.save_dir)
             model.train()
 
         del input_ids, labels, res, loss
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))
-    ckp_data = lm_checkpoint(lm_config, weight=args.lora_name, save_dir=str(PROJECT_ROOT / "checkpoints")) if args.from_resume==1 else None
+    ckp_data = lm_checkpoint(lm_config, weight=args.lora_name, save_dir=args.save_dir) if args.from_resume==1 else None
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"

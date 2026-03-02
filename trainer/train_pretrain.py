@@ -91,16 +91,8 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
             probe.deactivate()
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
-            model.eval()
-            moe_suffix = '_moe' if lm_config.use_moe else ''
-            ckp = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
-            raw_model = model.module if isinstance(model, DistributedDataParallel) else model
-            raw_model = getattr(raw_model, '_orig_mod', raw_model)
-            state_dict = raw_model.state_dict()
-            torch.save({k: v.half().cpu() for k, v in state_dict.items()}, ckp)
-            lm_checkpoint(lm_config, weight=args.save_weight, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir=ckp_dir)
+            lm_checkpoint(lm_config, weight=args.save_weight, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir=args.save_dir)
             model.train()
-            del state_dict
 
         del input_ids, labels, res, loss
 
@@ -132,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="K-Pretrain", help="wandb项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速")
-    parser.add_argument("--log_dir", type=str, default=str(PROJECT_ROOT / "logs" / "pretrain"), help="指标 JSONL 与曲线图输出目录")
+    parser.add_argument("--log_dir", type=str, default=str(PROJECT_ROOT / "out" / "logs" / "pretrain"), help="指标 JSONL 与曲线图输出目录")
     args = parser.parse_args()
 
     # ========== 1. 设备选择 ==========
@@ -150,11 +142,10 @@ if __name__ == "__main__":
 
     # ========== 3. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
-    ckp_dir = str(PROJECT_ROOT / "checkpoints")
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
                                num_attention_heads=args.num_attention_heads, num_key_value_heads=args.num_key_value_heads,
                                use_moe=bool(args.use_moe))
-    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=ckp_dir) if args.from_resume == 1 else None
+    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=args.save_dir) if args.from_resume == 1 else None
 
     # ========== 4. 混合精度：CUDA 用 AMP，MPS/CPU 用 nullcontext ==========
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16

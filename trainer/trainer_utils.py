@@ -82,7 +82,7 @@ def setup_seed(seed: int):
 
 def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir=None, **kwargs):
     if save_dir is None:
-        save_dir = str(_project_root() / "checkpoints")
+        save_dir = str(_project_root() / "out")
     os.makedirs(save_dir, exist_ok=True)
     moe_path = '_moe' if lm_config.use_moe else ''
     ckp_path = f'{save_dir}/{weight}_{lm_config.hidden_size}{moe_path}.pth'
@@ -129,7 +129,7 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
             torch.cuda.empty_cache()
     else:  # 加载模式
         if os.path.exists(resume_path):
-            ckp_data = torch.load(resume_path, map_location='cpu')
+            ckp_data = torch.load(resume_path, map_location='cpu', weights_only=False)
             saved_ws = ckp_data.get('world_size', 1)
             current_ws = dist.get_world_size() if dist.is_initialized() else 1
             if saved_ws != current_ws:
@@ -155,7 +155,7 @@ def init_model(lm_config, from_weight='pretrain', tokenizer_path=None, save_dir=
     if from_weight!= 'none':
         moe_suffix = '_moe' if lm_config.use_moe else ''
         weight_path = str(Path(save_dir) / f'{from_weight}_{lm_config.hidden_size}{moe_suffix}.pth')
-        weights = torch.load(weight_path, map_location=device)
+        weights = torch.load(weight_path, map_location='cpu', weights_only=False)
         model.load_state_dict(weights, strict=False)
 
     get_model_params(model, lm_config)

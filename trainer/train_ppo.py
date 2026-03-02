@@ -230,21 +230,11 @@ def ppo_train_epoch(epoch, loader, iters, old_actor_model, ref_model, actor_sche
             old_actor_model.to(args.device)
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
-            actor_model.eval()
-            moe_suffix = '_moe' if lm_config.use_moe else ''
-            ckp = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
-            raw_actor = actor_model.module if isinstance(actor_model, DistributedDataParallel) else actor_model
-            raw_actor = getattr(raw_actor, '_orig_mod', raw_actor)
-            actor_state = raw_actor.state_dict()
-            torch.save({k: v.half().cpu() for k, v in actor_state.items()}, ckp)
-            
-            # 使用 lm_checkpoint 保存完整状态（包括 critic）
             lm_checkpoint(lm_config, weight=args.save_weight, model=actor_model, optimizer=actor_optimizer,
-                         epoch=epoch, step=step, wandb=wandb, save_dir=str(PROJECT_ROOT / "checkpoints"),
+                         epoch=epoch, step=step, wandb=wandb, save_dir=args.save_dir,
                          scheduler=actor_scheduler, critic_model=critic_model,
                          critic_optimizer=critic_optimizer, critic_scheduler=critic_scheduler)
             actor_model.train()
-            del actor_state
 
         del enc, gen_out, responses_text, rewards, full_mask, values_seq, values, advantages
         del logits, labels, logp_tokens, final_mask, actor_logp, old_logits, old_logp, ref_logits, ref_logp
@@ -292,7 +282,7 @@ if __name__ == "__main__":
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))
-    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=str(PROJECT_ROOT / "checkpoints")) if args.from_resume==1 else None
+    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=args.save_dir) if args.from_resume==1 else None
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"
@@ -324,7 +314,7 @@ if __name__ == "__main__":
     # Critic模型
     moe_suffix = '_moe' if lm_config.use_moe else ''
     ckp = f'{args.save_dir}/{base_weight}_{lm_config.hidden_size}{moe_suffix}.pth'
-    state_dict = torch.load(ckp, map_location=args.device)
+    state_dict = torch.load(ckp, map_location=args.device, weights_only=False)
     critic_model = CriticModel(lm_config)
     critic_model.load_state_dict(state_dict, strict=False)
     critic_model = critic_model.to(args.device)

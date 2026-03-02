@@ -75,9 +75,8 @@ Unified dataset module with classes for all stages: `PretrainDataset`, `SFTDatas
 - `convert_model.py` — Bidirectional PyTorch ↔ Transformers weight conversion.
 
 ### Output Directories
-- `out/` — Saved model weights after training.
-- `logs/` — JSONL training logs and generated curve plots.
-- `checkpoints/` — Training checkpoints.
+- `out/` — Model weights (`.pth`) and resume state (`*_resume.pth`) from training; LoRA 默认在 `out/lora/`。
+- `out/logs/<task>/` — JSONL metrics and curve plots per task (e.g. `out/logs/pretrain/`).
 
 ## Key Design Decisions
 

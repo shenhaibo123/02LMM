@@ -2,9 +2,8 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
+# 训练产出统一在 out/ 下（含权重、续训状态、out/logs/）
 out/
-logs/
-checkpoints/
 .cache/
 dataset/*.jsonl
 reference/

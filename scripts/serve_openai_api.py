@@ -38,7 +38,7 @@ def init_model(args):
             use_moe=bool(args.use_moe),
             inference_rope_scaling=args.inference_rope_scaling
         ))
-        model.load_state_dict(torch.load(ckp, map_location=device), strict=True)
+        model.load_state_dict(torch.load(ckp, map_location=device, weights_only=False), strict=True)
         if args.lora_weight != 'None':
             apply_lora(model)
             load_lora(model, str(Path(args.save_dir) / 'lora' / f'{args.lora_weight}_{args.hidden_size}.pth'))
