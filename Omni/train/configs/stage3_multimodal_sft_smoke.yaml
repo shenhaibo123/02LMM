@@ -1,0 +1,55 @@
+# Stage 3 Smoke Test: 全模态联合 SFT（轻量验证）
+
+stage: 3
+stage_name: "全模态联合微调 (Smoke)"
+
+model:
+  llm: "Qwen/Qwen3-0.5B"
+  vision_encoder: "openai/clip-vit-base-patch32"
+  audio_encoder: "openai/whisper-small"
+  trust_remote_code: true
+  torch_dtype: "bfloat16"
+  resume_from: "outputs/smoke/stage2_vision_align/latest"
+
+lora:
+  enabled: true
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+freeze:
+  vision_encoder: true
+  audio_encoder: true
+  llm: false
+  visual_projector: false
+  audio_projector: false
+  speech_decoder: true
+
+data:
+  train_files:
+    - "datasets/stage3/swift_format/silk-road_alpaca-data-gpt4-chinese_swift.jsonl"
+  mixing_ratios: [1.0]
+  data_type: "text_sft"
+  max_seq_len: 512
+  max_samples: 1000
+
+training:
+  learning_rate: 2.0e-5
+  lr_scheduler: "cosine"
+  warmup_steps: 100
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  max_epochs: 1
+  batch_size_per_gpu: 4
+  gradient_accumulation_steps: 2
+
+output_dir: "outputs/smoke/stage3_multimodal_sft"
+save_strategy: "epoch"
+save_total_limit: 1
+logging_steps: 5
+report_to: "tensorboard"
+
+hardware:
+  gpus: 1
+  estimated_time: "1 hour"

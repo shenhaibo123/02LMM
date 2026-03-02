@@ -1,0 +1,77 @@
+# Stage 3: 全模态联合 SFT
+# 目标: 解冻 LLM (LoRA r=64)，在多模态混合数据上联合微调
+# 冻结: Vision encoder + Audio encoder
+# 训练: LLM (LoRA) + Visual Projector + Audio Projector
+
+stage: 3
+stage_name: "全模态联合微调"
+
+# ── 模型 ─────────────────────────────────────────────────
+model:
+  llm: "Qwen/Qwen3-8B"
+  vision_encoder: "google/siglip-so400m-patch14-384"
+  audio_encoder: "openai/whisper-large-v3"
+  trust_remote_code: true
+  torch_dtype: "bfloat16"
+  resume_from: "outputs/stage2_vision_align/latest"
+
+# ── LoRA 配置 ────────────────────────────────────────────
+lora:
+  enabled: true
+  rank: 64
+  alpha: 128
+  dropout: 0.05
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# ── 冻结策略 ─────────────────────────────────────────────
+freeze:
+  vision_encoder: true
+  audio_encoder: true
+  llm: false              # LoRA 微调
+  visual_projector: false
+  audio_projector: false
+  speech_decoder: true
+
+# ── 数据 ─────────────────────────────────────────────────
+data:
+  train_files:
+    - "datasets/stage3/swift_format/silk-road_alpaca-data-gpt4-chinese_swift.jsonl"
+    - "datasets/stage3/swift_format/liuhaotian_LLaVA-Instruct-150k_swift.jsonl"
+  mixing_ratios: [0.4, 0.6]    # 文本:图像 = 4:6
+  data_type: "mixed"
+  max_seq_len: 4096
+
+# ── 训练超参 ─────────────────────────────────────────────
+training:
+  learning_rate: 2.0e-5
+  lr_scheduler: "cosine"
+  warmup_steps: 1000
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  max_epochs: 3
+  batch_size_per_gpu: 8
+  gradient_accumulation_steps: 8
+
+# ── 优化器 ─────────────────────────────────────────────
+optimizer:
+  type: "adamw"
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+# ── DeepSpeed ─────────────────────────────────────────────
+deepspeed: "configs/deepspeed_zero2.json"
+
+# ── 保存与日志 ───────────────────────────────────────────
+output_dir: "outputs/stage3_multimodal_sft"
+save_strategy: "steps"
+save_steps: 1000
+save_total_limit: 3
+logging_steps: 10
+eval_steps: 2000
+report_to: "tensorboard"
+
+# ── 硬件 ─────────────────────────────────────────────────
+hardware:
+  gpus: 8
+  gpu_type: "A100-80G"
+  estimated_time: "3 days"

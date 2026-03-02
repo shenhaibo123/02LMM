@@ -244,12 +244,13 @@ def build_dataloader(
         max_seq_len=max_seq_len,
         max_samples=max_samples,
     )
+    pin_memory = torch.cuda.is_available()
     return DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=pin_memory,
         drop_last=True,
     )
 
@@ -316,10 +317,11 @@ if __name__ == "__main__":
             print(f"  rejected_input_ids shape: {sample['rejected_input_ids'].shape}")
             break
 
-    # 测试 DataLoader
+    # 测试 DataLoader (num_workers=0 避免 macOS spawn pickle 问题)
     loader = build_dataloader(
         tmp_path, stage=3, tokenizer=tokenizer,
         batch_size=4, max_seq_len=64, max_samples=8,
+        num_workers=0,
     )
     batch = next(iter(loader))
     print(f"\nDataLoader batch:")

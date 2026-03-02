@@ -1,6 +1,6 @@
-# Omni 全模态模型项目：统一需求与执行计划 v2
+# Omni 全模态模型项目：统一需求与执行计划 v3
 
-> 更新日期：2026-03-02
+> 更新日期：2026-03-02 (v3 — 全部任务完成)
 > 本文档整合原始需求、参考资料、当前现状、模型规划与执行计划。供后续执行或子 Agent 使用。
 
 ---
@@ -21,19 +21,19 @@
 |------|--------|--------|------|
 | R1 | 11 篇论文逐篇训练过程详细说明 | `Omni/docs/training_comparison.md` | **已完成** (637行) |
 | R2 | 5 篇重点论文单独详细报告 | `Omni/docs/papers/*.md` (5个) | **已完成** |
-| R3 | 4 个开源仓库详细分析报告 | `Omni/docs/repos/*.md` (4个) | **待完成** |
+| R3 | 4 个开源仓库详细分析报告 | `Omni/docs/repos/*.md` (4个) | **已完成** |
 | R4 | 仓库克隆到 reference/ | `reference/{bc-omni,Baichuan-Omni-1.5,mini-omni2,OpenOmni}/` | **已完成** |
-| R5 | 训练方案整合文档 | `Omni/scheme/training_scheme.md` | **待完成** |
-| R6 | 可落地训练代码（含模型定义） | `Omni/train/` | **部分完成** |
-| R7 | 数据下载+处理+统计分析 | `Omni/train/data/` | **待完成** |
-| R8 | 各阶段训练配置（YAML + smoke） | `Omni/train/configs/` | **待完成** |
-| R9 | 一键执行脚本 | `run_all.sh`, `run_smoke_test.sh`, `eval.sh` | **待完成** |
-| R10 | 训练过程检测指标与绘图 | `Omni/train/metrics/` | **已完成** (1000行) |
+| R5 | 训练方案整合文档 | `Omni/scheme/training_scheme.md` (509行) | **已完成** |
+| R6 | 可落地训练代码（含模型定义） | `Omni/train/` | **已完成** |
+| R7 | 数据下载+处理+统计分析 | `Omni/train/data/` (4文件, 1273行) | **已完成** |
+| R8 | 各阶段训练配置（YAML + smoke） | `Omni/train/configs/` (10个YAML) | **已完成** |
+| R9 | 一键执行脚本 | `run_all.sh`, `run_smoke_test.sh`, `eval.sh`, `run_stage.sh` | **已完成** |
+| R10 | 训练过程检测指标与绘图 | `Omni/train/metrics/` | **已完成** (1022行) |
 | R11 | 训完评测指标 | `Omni/train/metrics/eval_metrics.py` + `Omni/swift_train/eval/` | **已完成** |
-| R12 | 辅助文档（架构+代码导读） | `Omni/README.md`, `train/README.md`, `train/ARCHITECTURE.md` | **待完成** |
-| R13 | Smoke test 用小编码器适配 | config.py 已有 smoke 参数；脚本需补齐 | **部分完成** |
-| R14 | CosyVoice2 选型说明 | 在训练方案文档中说明 | **待完成** |
-| R15 | 验证（dry-run + 依赖检查） | 验证报告 | **待完成** |
+| R12 | 辅助文档（架构+代码导读） | `Omni/README.md`, `train/README.md`, `train/ARCHITECTURE.md` | **已完成** |
+| R13 | Smoke test 用小编码器适配 | config.py + 5个smoke YAML + run_smoke_test.sh | **已完成** |
+| R14 | CosyVoice2 选型说明 | `scheme/training_scheme.md` + `train/ARCHITECTURE.md` | **已完成** |
+| R15 | 验证（dry-run + 依赖检查） | Python/Shell/YAML 语法 + 交叉引用 + 前向传播 | **已完成** |
 
 ---
 

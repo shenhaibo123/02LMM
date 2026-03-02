@@ -1,0 +1,78 @@
+# Stage 4: 语音生成训练
+# 目标: 训练 Speech Decoder (Transformer + CTC)，使模型具备语音 token 输出能力
+# 冻结: Vision encoder + Audio encoder + Visual Projector
+# 训练: Speech Decoder (~50M) + LLM 最后 2 层 (partial unfreeze)
+
+stage: 4
+stage_name: "语音生成训练"
+
+# ── 模型 ─────────────────────────────────────────────────
+model:
+  llm: "Qwen/Qwen3-8B"
+  vision_encoder: "google/siglip-so400m-patch14-384"
+  audio_encoder: "openai/whisper-large-v3"
+  trust_remote_code: true
+  torch_dtype: "bfloat16"
+  resume_from: "outputs/stage3_multimodal_sft/latest"
+
+# ── 冻结策略 ─────────────────────────────────────────────
+freeze:
+  vision_encoder: true
+  audio_encoder: true
+  visual_projector: true
+  audio_projector: false
+  llm: false              # 仅解冻最后 2 层
+  speech_decoder: false
+
+# LLM 部分解冻策略
+llm_partial_unfreeze:
+  strategy: "last_n_layers"
+  n_layers: 2
+
+# ── 数据 ─────────────────────────────────────────────────
+data:
+  train_files:
+    - "datasets/stage4/swift_format/cdminix_libritts-r-aligned_swift.jsonl"
+  data_type: "tts"
+  max_seq_len: 2048
+
+# ── 损失函数 ─────────────────────────────────────────────
+loss:
+  type: "ctc_lm"          # CTC Loss + LM Loss 联合
+  ctc_weight: 0.5
+  lm_weight: 0.5
+  ctc_blank_id: 4096      # CosyVoice2 4096 词表，blank = 4096
+
+# ── 训练超参 ─────────────────────────────────────────────
+training:
+  learning_rate: 5.0e-4
+  lr_scheduler: "cosine"
+  warmup_steps: 500
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  max_epochs: 2
+  batch_size_per_gpu: 16
+  gradient_accumulation_steps: 4
+
+# ── 优化器 ─────────────────────────────────────────────
+optimizer:
+  type: "adamw"
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+# ── DeepSpeed ─────────────────────────────────────────────
+deepspeed: "configs/deepspeed_zero2.json"
+
+# ── 保存与日志 ───────────────────────────────────────────
+output_dir: "outputs/stage4_speech_gen"
+save_strategy: "steps"
+save_steps: 500
+save_total_limit: 3
+logging_steps: 10
+report_to: "tensorboard"
+
+# ── 硬件 ─────────────────────────────────────────────────
+hardware:
+  gpus: 8
+  gpu_type: "A100-80G"
+  estimated_time: "2 days"

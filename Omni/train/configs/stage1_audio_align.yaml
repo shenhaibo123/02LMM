@@ -1,0 +1,67 @@
+# Stage 1: 音频-语言对齐
+# 目标: 训练 Audio Projector (Conv-gMLP)，将 Whisper 音频特征映射到 LLM 嵌入空间
+# 冻结: LLM + Whisper encoder + Vision encoder + Speech decoder
+# 训练: Audio Projector (~8M params)
+
+stage: 1
+stage_name: "音频-语言对齐"
+
+# ── 模型 ─────────────────────────────────────────────────
+model:
+  llm: "Qwen/Qwen3-8B"
+  vision_encoder: "google/siglip-so400m-patch14-384"
+  audio_encoder: "openai/whisper-large-v3"
+  trust_remote_code: true
+  torch_dtype: "bfloat16"
+
+# ── 冻结策略 ─────────────────────────────────────────────
+freeze:
+  vision_encoder: true
+  audio_encoder: true
+  llm: true
+  visual_projector: true
+  audio_projector: false    # 仅此组件可训练
+  speech_decoder: true
+
+# ── 数据 ─────────────────────────────────────────────────
+data:
+  train_files:
+    - "datasets/stage1/swift_format/openslr_librispeech_asr_swift.jsonl"
+    - "datasets/stage1/swift_format/speech_asr_speech_asr_aishell1_trainsets_swift.jsonl"
+  data_type: "audio_text"
+  max_seq_len: 2048
+
+# ── 训练超参 ─────────────────────────────────────────────
+training:
+  learning_rate: 1.0e-3
+  lr_scheduler: "cosine"
+  warmup_steps: 500
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  max_epochs: 1
+  batch_size_per_gpu: 32
+  gradient_accumulation_steps: 4
+  # 有效 batch size = 32 × 8 GPU × 4 acc = 1024
+
+# ── 优化器 ─────────────────────────────────────────────
+optimizer:
+  type: "adamw"
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+# ── DeepSpeed ─────────────────────────────────────────────
+deepspeed: "configs/deepspeed_zero2.json"
+
+# ── 保存与日志 ───────────────────────────────────────────
+output_dir: "outputs/stage1_audio_align"
+save_strategy: "steps"
+save_steps: 500
+save_total_limit: 3
+logging_steps: 10
+report_to: "tensorboard"
+
+# ── 硬件 ─────────────────────────────────────────────────
+hardware:
+  gpus: 8
+  gpu_type: "A100-80G"
+  estimated_time: "2 days"
