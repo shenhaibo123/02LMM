@@ -5,6 +5,7 @@ __package__ = "trainer"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import argparse
+import random
 import re
 import warnings
 import torch
@@ -21,11 +22,17 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import AutoModel
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import RLAIFDataset
-from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model
+from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model, get_best_device
 
 warnings.filterwarnings('ignore')
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+class _MockRewardModel:
+    """Smoke 模式下使用的占位 reward，仅用于验通训练流程。"""
+    def get_score(self, tokenizer, chat):
+        return 0.5 + 0.1 * (random.random() - 0.5)
 
 
 # 自定义的Critic模型，继承自MiniMindLM
@@ -249,7 +256,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=2, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=8e-8, help="Actor学习率")
     parser.add_argument("--critic_learning_rate", type=float, default=8e-8, help="Critic学习率")
-    parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
+    parser.add_argument("--device", type=str, default="auto", help="训练设备（auto / cuda:0 / mps / cpu）")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
     parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
@@ -258,6 +265,8 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=10, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（需与 base 权重一致）")
+    parser.add_argument('--num_key_value_heads', default=2, type=int, help="KV 头数（需与 base 权重一致）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument('--max_seq_len', default=66, type=int, help="Prompt最大长度")
     parser.add_argument("--max_gen_len", type=int, default=1536, help="生成的最大长度")
@@ -268,24 +277,30 @@ if __name__ == "__main__":
     parser.add_argument("--reasoning", type=int, default=1, choices=[0, 1], help='推理模型类型（0=普通模型，1=推理模型）')
     parser.add_argument("--update_old_actor_freq", type=int, default=4, help="更新old_actor_model的频率")
     parser.add_argument("--reward_model_path", type=str, default=str(PROJECT_ROOT.parent / "internlm2-1_8b-reward"), help="Reward模型路径")
+    parser.add_argument("--smoke", action="store_true", help="冒烟测试：不加载 reward 模型，用随机 reward 验通流程")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="K-PPO", help="wandb项目名")
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+    # ========== 1. 设备与随机种子 ==========
     local_rank = init_distributed_mode()
-    if dist.is_initialized(): args.device = f"cuda:{local_rank}"
+    if dist.is_initialized():
+        args.device = f"cuda:{local_rank}"
+    elif args.device == "auto":
+        args.device = get_best_device()
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
-    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))
+    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
+                               num_attention_heads=args.num_attention_heads, num_key_value_heads=args.num_key_value_heads,
+                               use_moe=bool(args.use_moe))
     ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir=args.save_dir) if args.from_resume==1 else None
     
     # ========== 3. 设置混合精度 ==========
-    device_type = "cuda" if "cuda" in args.device else "cpu"
+    device_type = "cuda" if "cuda" in args.device else ("mps" if "mps" in args.device else "cpu")
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.cuda.amp.autocast(dtype=dtype)
     
@@ -318,12 +333,17 @@ if __name__ == "__main__":
     critic_model = CriticModel(lm_config)
     critic_model.load_state_dict(state_dict, strict=False)
     critic_model = critic_model.to(args.device)
-    # Reward模型
-    reward_model = AutoModel.from_pretrained(
-        args.reward_model_path, torch_dtype=torch.float16, trust_remote_code=True
-    )
-    reward_model = reward_model.to(args.device).eval().requires_grad_(False)
-    reward_tokenizer = AutoTokenizer.from_pretrained(args.reward_model_path, trust_remote_code=True)
+    # Reward模型（smoke 模式下用占位，不加载外部模型）
+    if args.smoke:
+        reward_model = _MockRewardModel()
+        reward_tokenizer = tokenizer
+        Logger('Smoke 模式：使用占位 reward，未加载 reward 模型')
+    else:
+        reward_model = AutoModel.from_pretrained(
+            args.reward_model_path, torch_dtype=torch.float16, trust_remote_code=True
+        )
+        reward_model = reward_model.to(args.device).eval().requires_grad_(False)
+        reward_tokenizer = AutoTokenizer.from_pretrained(args.reward_model_path, trust_remote_code=True)
     # 数据和优化器
     train_ds = RLAIFDataset(args.data_path, tokenizer, max_length=(args.max_seq_len + args.max_gen_len))
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None

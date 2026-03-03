@@ -1,5 +1,6 @@
 # 注：不建议再重复训练tokenizer（“词典”），MiniMind已自带，此脚本仅供学习和参考。基于不同词典训练的模型将导致输出完全不统一，降低社区的模型复用性
 # Note: It is not recommended to re-train the tokenizer. MiniMind already includes one. This script is for learning and reference only. Training models with different tokenizers will lead to inconsistent outputs and reduce model reusability in the community.
+import argparse
 import os
 import json
 from pathlib import Path
@@ -10,14 +11,15 @@ DATA_PATH = str(_PROJECT_ROOT / "dataset" / "pretrain_hq.jsonl")
 TOKENIZER_DIR = str(_PROJECT_ROOT / "model_learn_tokenizer")
 VOCAB_SIZE = 6400
 
-def get_texts(data_path):
+def get_texts(data_path, max_lines=10000):
     with open(data_path, 'r', encoding='utf-8') as f:
         for i, line in enumerate(f):
-            if i >= 10000: break # 实验性，可只用前10000行测试
+            if i >= max_lines:
+                break
             data = json.loads(line)
             yield data['text']
 
-def train_tokenizer(data_path, tokenizer_dir, vocab_size):
+def train_tokenizer(data_path, tokenizer_dir, vocab_size, max_lines=10000):
     tokenizer = Tokenizer(models.BPE())
     tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
     trainer = trainers.BpeTrainer(
@@ -26,7 +28,7 @@ def train_tokenizer(data_path, tokenizer_dir, vocab_size):
         show_progress=True,
         initial_alphabet=pre_tokenizers.ByteLevel.alphabet()
     )
-    texts = get_texts(data_path)
+    texts = get_texts(data_path, max_lines=max_lines)
     tokenizer.train_from_iterator(texts, trainer=trainer)
     tokenizer.decoder = decoders.ByteLevel()
 
@@ -124,5 +126,13 @@ def eval_tokenizer(tokenizer_dir):
             token_cache = []
 
 if __name__ == '__main__':
-    train_tokenizer(DATA_PATH, TOKENIZER_DIR, VOCAB_SIZE)
-    eval_tokenizer(TOKENIZER_DIR)
+    parser = argparse.ArgumentParser(description="训练 BPE tokenizer（仅供学习与验通）")
+    parser.add_argument("--data_path", type=str, default=DATA_PATH, help="预训练 jsonl 路径（每行需含 text）")
+    parser.add_argument("--output_dir", type=str, default=TOKENIZER_DIR, help="输出目录")
+    parser.add_argument("--vocab_size", type=int, default=VOCAB_SIZE, help="词表大小")
+    parser.add_argument("--max_lines", type=int, default=10000, help="最多使用的行数（验通时可设小）")
+    parser.add_argument("--skip_eval", action="store_true", help="跳过 eval 步骤")
+    args = parser.parse_args()
+    train_tokenizer(args.data_path, args.output_dir, args.vocab_size, max_lines=args.max_lines)
+    if not args.skip_eval:
+        eval_tokenizer(args.output_dir)

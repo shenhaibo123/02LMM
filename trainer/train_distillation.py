@@ -17,7 +17,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig
 from dataset.lm_dataset import SFTDataset
-from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler
+from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler, get_best_device
 
 warnings.filterwarnings('ignore')
 
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=6, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=5e-6, help="初始学习率")
-    parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
+    parser.add_argument("--device", type=str, default="auto", help="训练设备（auto / cuda:0 / mps / cpu）")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
     parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
@@ -147,8 +147,12 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str, default=str(PROJECT_ROOT / "dataset" / "sft_mini_512.jsonl"), help="训练数据路径")
     parser.add_argument('--student_hidden_size', default=512, type=int, help="学生模型隐藏层维度")
     parser.add_argument('--student_num_layers', default=8, type=int, help="学生模型隐藏层数量")
+    parser.add_argument('--student_num_heads', default=8, type=int, help="学生模型注意力头数")
+    parser.add_argument('--student_num_kv_heads', default=2, type=int, help="学生模型 KV 头数")
     parser.add_argument('--teacher_hidden_size', default=768, type=int, help="教师模型隐藏层维度")
     parser.add_argument('--teacher_num_layers', default=16, type=int, help="教师模型隐藏层数量")
+    parser.add_argument('--teacher_num_heads', default=8, type=int, help="教师模型注意力头数")
+    parser.add_argument('--teacher_num_kv_heads', default=2, type=int, help="教师模型 KV 头数")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument('--from_student_weight', default='full_sft', type=str, help="学生模型基于哪个权重")
     parser.add_argument('--from_teacher_weight', default='full_sft', type=str, help="教师模型基于哪个权重")
@@ -160,19 +164,26 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+    # ========== 1. 设备与随机种子 ==========
     local_rank = init_distributed_mode()
-    if dist.is_initialized(): args.device = f"cuda:{local_rank}"
+    if dist.is_initialized():
+        args.device = f"cuda:{local_rank}"
+    elif args.device == "auto":
+        args.device = get_best_device()
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
-    lm_config_student = MiniMindConfig(hidden_size=args.student_hidden_size, num_hidden_layers=args.student_num_layers, use_moe=bool(args.use_moe))
-    lm_config_teacher = MiniMindConfig(hidden_size=args.teacher_hidden_size, num_hidden_layers=args.teacher_num_layers, use_moe=bool(args.use_moe))
+    lm_config_student = MiniMindConfig(hidden_size=args.student_hidden_size, num_hidden_layers=args.student_num_layers,
+                                       num_attention_heads=args.student_num_heads, num_key_value_heads=args.student_num_kv_heads,
+                                       use_moe=bool(args.use_moe))
+    lm_config_teacher = MiniMindConfig(hidden_size=args.teacher_hidden_size, num_hidden_layers=args.teacher_num_layers,
+                                       num_attention_heads=args.teacher_num_heads, num_key_value_heads=args.teacher_num_kv_heads,
+                                       use_moe=bool(args.use_moe))
     ckp_data = lm_checkpoint(lm_config_student, weight=args.save_weight, save_dir=args.save_dir) if args.from_resume==1 else None
     
     # ========== 3. 设置混合精度 ==========
-    device_type = "cuda" if "cuda" in args.device else "cpu"
+    device_type = "cuda" if "cuda" in args.device else ("mps" if "mps" in args.device else "cpu")
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.cuda.amp.autocast(dtype=dtype)
     

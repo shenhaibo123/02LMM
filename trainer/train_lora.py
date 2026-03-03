@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig
 from dataset.lm_dataset import SFTDataset
 from model.model_lora import save_lora, apply_lora
-from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler
+from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler, get_best_device
 
 warnings.filterwarnings('ignore')
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=50, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="初始学习率")
-    parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
+    parser.add_argument("--device", type=str, default="auto", help="训练设备（auto / cuda:0 / mps / cpu）")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
     parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
@@ -84,6 +84,8 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="注意力头数（需与 from_weight 一致）")
+    parser.add_argument('--num_key_value_heads', default=2, type=int, help="KV 头数（需与 from_weight 一致）")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument("--data_path", type=str, default=str(PROJECT_ROOT / "dataset" / "lora_identity.jsonl"), help="LoRA训练数据路径")
@@ -94,18 +96,23 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     args = parser.parse_args()
 
-    # ========== 1. 初始化环境和随机种子 ==========
+    # ========== 1. 设备与随机种子 ==========
     local_rank = init_distributed_mode()
-    if dist.is_initialized(): args.device = f"cuda:{local_rank}"
+    if dist.is_initialized():
+        args.device = f"cuda:{local_rank}"
+    elif args.device == "auto":
+        args.device = get_best_device()
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
-    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))
+    lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
+                               num_attention_heads=args.num_attention_heads, num_key_value_heads=args.num_key_value_heads,
+                               use_moe=bool(args.use_moe))
     ckp_data = lm_checkpoint(lm_config, weight=args.lora_name, save_dir=args.save_dir) if args.from_resume==1 else None
     
     # ========== 3. 设置混合精度 ==========
-    device_type = "cuda" if "cuda" in args.device else "cpu"
+    device_type = "cuda" if "cuda" in args.device else ("mps" if "mps" in args.device else "cpu")
     dtype = torch.bfloat16 if args.dtype == "bfloat16" else torch.float16
     autocast_ctx = nullcontext() if device_type == "cpu" else torch.cuda.amp.autocast(dtype=dtype)
     
